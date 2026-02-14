@@ -1,4 +1,5 @@
 @using TimeTrackerApp.Models.ViewModels
+@using TimeTrackerApp.Models
 @model WeeklyTimeGridViewModel
 
 @{
@@ -53,11 +54,56 @@
             {
                 var isToday = day.Date == DateTime.Today;
                 var dayEntries = Model.EntriesByDay.ContainsKey(day) ? Model.EntriesByDay[day] : new List<TimeGridEntry>();
+                var dayMarker = Model.DayMarkers.ContainsKey(day) ? Model.DayMarkers[day] : null;
+                var dayTypeClass = dayMarker != null ? GetDayTypeClass(dayMarker.Type) : "";
 
-                <div class="timegrid-day-col @(isToday ? "today" : "")" data-date="@day.ToString("yyyy-MM-dd")">
+                <div class="timegrid-day-col @(isToday ? "today" : "") @dayTypeClass" data-date="@day.ToString("yyyy-MM-dd")">
                     <div class="timegrid-day-header">
-                        <div class="day-name">@day.ToString("ddd", new System.Globalization.CultureInfo("pl-PL"))</div>
-                        <div class="day-date">@day.ToString("d MMM")</div>
+                        <div style="flex: 1;">
+                            <div class="day-name">@day.ToString("ddd", new System.Globalization.CultureInfo("pl-PL"))</div>
+                            <div class="day-date">@day.ToString("d MMM")</div>
+                        </div>
+                        <div class="day-marker-selector">
+                            <button class="btn-day-marker" onclick="toggleDayMarkerMenu(event, '@day.ToString("yyyy-MM-dd")')">
+                                @if (dayMarker != null)
+                                {
+                                    <span>@GetDayTypeIcon(dayMarker.Type)</span>
+                                }
+                                else
+                                {
+                                    <span>•••</span>
+                                }
+                            </button>
+                            <div class="day-marker-menu" id="menu-@day.ToString("yyyy-MM-dd")" style="display: none;">
+                                <div class="day-marker-option" onclick="setDayMarker('@day.ToString("yyyy-MM-dd")', 1)">
+                                    <span class="marker-icon" style="background: rgba(147, 51, 234, 0.2);"></span>
+                                    <span>Delegacja</span>
+                                    @if (dayMarker?.Type == DayType.BusinessTrip) { <span>✓</span> }
+                                </div>
+                                <div class="day-marker-option" onclick="setDayMarker('@day.ToString("yyyy-MM-dd")', 2)">
+                                    <span class="marker-icon" style="background: rgba(156, 163, 175, 0.3);"></span>
+                                    <span>Dzień wolny</span>
+                                    @if (dayMarker?.Type == DayType.DayOff) { <span>✓</span> }
+                                </div>
+                                <div class="day-marker-option" onclick="setDayMarker('@day.ToString("yyyy-MM-dd")', 3)">
+                                    <span class="marker-icon" style="background: rgba(234, 179, 8, 0.2);"></span>
+                                    <span>Choroba</span>
+                                    @if (dayMarker?.Type == DayType.Sick) { <span>✓</span> }
+                                </div>
+                                <div class="day-marker-option" onclick="setDayMarker('@day.ToString("yyyy-MM-dd")', 4)">
+                                    <span class="marker-icon" style="background: rgba(244, 114, 182, 0.2);"></span>
+                                    <span>Urlop</span>
+                                    @if (dayMarker?.Type == DayType.Vacation) { <span>✓</span> }
+                                </div>
+                                @if (dayMarker != null)
+                                {
+                                    <div class="day-marker-option" onclick="removeDayMarker('@day.ToString("yyyy-MM-dd")')" style="color: var(--danger); border-top: 1px solid var(--border);">
+                                        <span>×</span>
+                                        <span>Usuń oznaczenie</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Hour cells -->
@@ -99,7 +145,25 @@
     </div>
 
     <div class="timegrid-legend">
-        <div class="hint">Kliknij i przeciągnij na siatce, aby dodać nowy wpis</div>
+        <div class="hint">Kliknij i przeciągnij na siatce, aby dodać nowy wpis. Użyj przycisku ••• w nagłówku dnia, aby oznaczyć dzień.</div>
+        <div style="display: flex; gap: 1rem; margin-top: 0.5rem; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 0.25rem;">
+                <span style="display: inline-block; width: 16px; height: 16px; background: rgba(147, 51, 234, 0.2); border-radius: 3px;"></span>
+                <span style="font-size: 0.875rem;">Delegacja</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.25rem;">
+                <span style="display: inline-block; width: 16px; height: 16px; background: rgba(156, 163, 175, 0.3); border-radius: 3px;"></span>
+                <span style="font-size: 0.875rem;">Dzień wolny</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.25rem;">
+                <span style="display: inline-block; width: 16px; height: 16px; background: rgba(234, 179, 8, 0.2); border-radius: 3px;"></span>
+                <span style="font-size: 0.875rem;">Choroba</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.25rem;">
+                <span style="display: inline-block; width: 16px; height: 16px; background: rgba(244, 114, 182, 0.2); border-radius: 3px;"></span>
+                <span style="font-size: 0.875rem;">Urlop</span>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -134,7 +198,7 @@
 
             <div class="form-group">
                 <label for="descriptionInput">Opis</label>
-                <textarea id="descriptionInput" class="form-control" rows="3" placeholder="Opisz wykonaną pracę..."></textarea>
+                <textarea id="descriptionInput" class="form-control" rows="3" placeholder="Opisz wykonywaną pracę..."></textarea>
             </div>
         </div>
         <div class="modal-footer">
@@ -143,6 +207,32 @@
         </div>
     </div>
 </div>
+
+@functions {
+    string GetDayTypeClass(DayType type)
+    {
+        return type switch
+        {
+            DayType.BusinessTrip => "day-business-trip",
+            DayType.DayOff => "day-off",
+            DayType.Sick => "day-sick",
+            DayType.Vacation => "day-vacation",
+            _ => ""
+        };
+    }
+
+    string GetDayTypeIcon(DayType type)
+    {
+        return type switch
+        {
+            DayType.BusinessTrip => "💼",
+            DayType.DayOff => "📋",
+            DayType.Sick => "🩺",
+            DayType.Vacation => "🏖️",
+            _ => ""
+        };
+    }
+}
 
 <script>
 const employeeId = @Model.EmployeeId;
@@ -154,6 +244,67 @@ let currentDayCol = null;
 function changeEmployee(newEmployeeId) {
     const currentDate = '@Model.WeekStart.ToString("yyyy-MM-dd")';
     window.location.href = `@Url.Action("Index", "Calendar")?date=${currentDate}&employeeId=${newEmployeeId}`;
+}
+
+// Close day marker menu when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.day-marker-selector')) {
+        document.querySelectorAll('.day-marker-menu').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    }
+});
+
+function toggleDayMarkerMenu(event, date) {
+    event.stopPropagation();
+    const menu = document.getElementById(`menu-${date}`);
+    const allMenus = document.querySelectorAll('.day-marker-menu');
+    allMenus.forEach(m => {
+        if (m !== menu) m.style.display = 'none';
+    });
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+
+async function setDayMarker(date, type) {
+    const response = await fetch('@Url.Action("SetDayMarker", "Calendar")', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            employeeId: employeeId,
+            date: date,
+            type: type,
+            note: null
+        })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+        location.reload();
+    } else {
+        alert(result.message || 'Błąd ustawiania oznaczenia');
+    }
+}
+
+async function removeDayMarker(date) {
+    const response = await fetch('@Url.Action("RemoveDayMarker", "Calendar")', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            employeeId: employeeId,
+            date: date
+        })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+        location.reload();
+    } else {
+        alert(result.message || 'Błąd usuwania oznaczenia');
+    }
 }
 
 // Mouse selection for creating new entries
@@ -258,8 +409,7 @@ async function deleteEntry(entryId) {
     const response = await fetch('@Url.Action("DeleteEntry", "Calendar")', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify({ id: entryId })
     });
@@ -293,8 +443,7 @@ async function saveEntry() {
         const response = await fetch('@Url.Action("UpdateEntry", "Calendar")', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 id: parseInt(entryId),
@@ -314,8 +463,7 @@ async function saveEntry() {
         const response = await fetch('@Url.Action("AddEntry", "Calendar")', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 employeeId: employeeId,
