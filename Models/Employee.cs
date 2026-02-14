@@ -7,24 +7,13 @@ namespace TimeTrackerApp.Models
     {
         public int Id { get; set; }
 
-        [Required(ErrorMessage = "Numer pracownika jest wymagany")]
-        [StringLength(10)]
-        public string EmployeeNumber { get; set; }
-
         [Required(ErrorMessage = "Stanowisko jest wymagane")]
-        [MaxLength(100)]
+        [MaxLength(200)]
         public string Position { get; set; }
 
-        [Required(ErrorMessage = "Dział jest wymagany")]
-        [MaxLength(100)]
+        [Required(ErrorMessage = "Departament jest wymagany")]
+        [MaxLength(200)]
         public string Department { get; set; }
-
-        [Required]
-        public decimal HourlyRate { get; set; }
-
-        [Required]
-        [Range(1, 40, ErrorMessage = "Normalna liczba godzin musi być między 1 a 40")]
-        public decimal StandardHoursPerDay { get; set; } = 8;
 
         public DateTime HireDate { get; set; } = DateTime.UtcNow;
 

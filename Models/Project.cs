@@ -22,9 +22,32 @@ namespace TimeTrackerApp.Models
 
         public bool IsActive { get; set; } = true;
 
+        // Budżet godzinowy projektu
+        public decimal? HoursBudget { get; set; }
+
         // Nawigacja
         public virtual ICollection<TimeEntry> TimeEntries { get; set; } = new List<TimeEntry>();
         public virtual ICollection<Employee> Employees { get; set; } = new List<Employee>();
+
+        // Właściwość obliczana - suma godzin
+        [NotMapped]
+        public decimal TotalHoursSpent
+        {
+            get
+            {
+                return TimeEntries?.Sum(te => te.TotalHours) ?? 0;
+            }
+        }
+
+        // Czy przekroczono budżet
+        [NotMapped]
+        public bool IsOverBudget
+        {
+            get
+            {
+                return HoursBudget.HasValue && TotalHoursSpent > HoursBudget.Value;
+            }
+        }
     }
 
     public enum ProjectStatus
