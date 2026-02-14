@@ -73,6 +73,7 @@ namespace TimeTrackerApp.Controllers
             var weekStart = StartOfWeek(anchor, DayOfWeek.Monday);
             var weekEnd = weekStart.AddDays(6);
 
+            // Fetch entries from database without sorting by StartTime (SQLite limitation)
             var entries = await _context.TimeEntries
                 .Include(e => e.Employee)
                     .ThenInclude(e => e.User)
@@ -80,8 +81,10 @@ namespace TimeTrackerApp.Controllers
                 .Include(e => e.CreatedByUser)
                 .Where(e => e.EmployeeId == employee.Id && e.EntryDate >= weekStart && e.EntryDate <= weekEnd)
                 .OrderBy(e => e.EntryDate)
-                .ThenBy(e => e.StartTime)
                 .ToListAsync();
+
+            // Sort by StartTime in memory (LINQ to Objects)
+            entries = entries.OrderBy(e => e.EntryDate).ThenBy(e => e.StartTime).ToList();
 
             var projects = await _context.Projects.OrderBy(p => p.Name).ToListAsync();
 
