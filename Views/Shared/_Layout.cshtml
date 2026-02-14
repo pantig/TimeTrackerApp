@@ -14,13 +14,13 @@
         <div class="navbar-menu">
             @if (User.Identity.IsAuthenticated)
             {
-                <a asp-controller="Calendar" asp-action="Index">📅 Kalendarz</a>
-                <a asp-controller="TimeEntries" asp-action="Index">📝 Wpisy</a>
-                <a asp-controller="Reports" asp-action="Summary">📊 Raporty</a>
+                <a asp-controller="Calendar" asp-action="Index">Kalendarz</a>
+                <a asp-controller="TimeEntries" asp-action="Index">Wpisy</a>
+                <a asp-controller="Reports" asp-action="Summary">Raporty</a>
                 @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
                 {
-                    <a asp-controller="Employees" asp-action="Index">👥 Pracownicy</a>
-                    <a asp-controller="Reports" asp-action="Approval">✅ Zatwierdzenia</a>
+                    <a asp-controller="Employees" asp-action="Index">Pracownicy</a>
+                    <a asp-controller="Reports" asp-action="Approval">Zatwierdzenia</a>
                 }
                 <span class="username">👤 @User.Identity.Name</span>
                 <form method="post" asp-controller="Account" asp-action="Logout" style="display:inline;">
@@ -29,8 +29,8 @@
             }
             else
             {
-                <a asp-controller="Account" asp-action="Login">🔑 Logowanie</a>
-                <a asp-controller="Account" asp-action="Register">📝 Rejestracja</a>
+                <a asp-controller="Account" asp-action="Login">Logowanie</a>
+                <a asp-controller="Account" asp-action="Register">Rejestracja</a>
             }
         </div>
     </div>
