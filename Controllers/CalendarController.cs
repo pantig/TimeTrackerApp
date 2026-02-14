@@ -28,103 +28,105 @@ namespace TimeTrackerApp.Controllers
 
         public async Task<IActionResult> Index(DateTime? date, int? employeeId)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var user = await _context.Users.FindAsync(userId);
+            // tutaj pobieramy aktualnego zalogowanego użytkownika
+            var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
+            
+            Employee? wybranyPracownik;
+            List<Employee>? wszyscyPracownicy = null;
 
-            Employee? employee;
-            List<Employee>? allEmployees = null;
-
-            // Admin/Manager can view any employee's calendar
-            if (user.Role == UserRole.Admin || user.Role == UserRole.Manager)
+            // admin i manager mogą oglądać kalendarz każdego pracownika
+            if (CzyMaUprawnienia(aktualnyUzytkownik.Role))
             {
-                allEmployees = await _context.Employees
+                wszyscyPracownicy = await _context.Employees
                     .Include(e => e.User)
                     .ToListAsync();
                 
-                allEmployees = allEmployees
+                // sortujemy alfabetycznie
+                wszyscyPracownicy = wszyscyPracownicy
                     .OrderBy(e => e.User.LastName)
                     .ThenBy(e => e.User.FirstName)
                     .ToList();
 
                 if (employeeId.HasValue)
                 {
-                    employee = allEmployees.FirstOrDefault(e => e.Id == employeeId.Value);
+                    wybranyPracownik = wszyscyPracownicy.FirstOrDefault(e => e.Id == employeeId.Value);
                 }
                 else
                 {
-                    // Default to first employee or own employee if exists
-                    employee = await _context.Employees.Include(e => e.User).FirstOrDefaultAsync(e => e.UserId == userId);
-                    if (employee == null && allEmployees.Any())
+                    // domyślnie pokazujemy pierwszy z listy lub własny profil
+                    wybranyPracownik = await _context.Employees.Include(e => e.User).FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
+                    if (wybranyPracownik == null && wszyscyPracownicy.Any())
                     {
-                        employee = allEmployees.First();
+                        wybranyPracownik = wszyscyPracownicy.First();
                     }
                 }
             }
             else
             {
-                // Regular employee can only view own calendar
-                employee = await _context.Employees
+                // zwykły pracownik widzi tylko swój kalendarz
+                wybranyPracownik = await _context.Employees
                     .Include(e => e.User)
                     .Include(e => e.Projects)
-                    .FirstOrDefaultAsync(e => e.UserId == userId);
+                    .FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
             }
 
-            if (employee == null)
+            if (wybranyPracownik == null)
             {
                 TempData["ErrorMessage"] = "Nie znaleziono profilu pracownika. Skontaktuj się z administratorem.";
                 return RedirectToAction("Index", "TimeEntries");
             }
 
-            var anchor = (date ?? DateTime.Today).Date;
-            var weekStart = StartOfWeek(anchor, DayOfWeek.Monday);
-            var weekEnd = weekStart.AddDays(6);
+            // obliczamy początek i koniec tygodnia
+            var dataKalendarza = (date ?? DateTime.Today).Date;
+            var poczatekTygodnia = PoczatekTygodnia(dataKalendarza, DayOfWeek.Monday);
+            var koniecTygodnia = poczatekTygodnia.AddDays(6);
 
-            // Fetch entries from database
-            var entries = await _context.TimeEntries
+            // pobieramy wpisy czasu z bazy
+            var wpisyCzasu = await _context.TimeEntries
                 .Include(e => e.Employee)
                     .ThenInclude(e => e.User)
                 .Include(e => e.Project)
                 .Include(e => e.CreatedByUser)
-                .Where(e => e.EmployeeId == employee.Id && e.EntryDate >= weekStart && e.EntryDate <= weekEnd)
+                .Where(e => e.EmployeeId == wybranyPracownik.Id && e.EntryDate >= poczatekTygodnia && e.EntryDate <= koniecTygodnia)
                 .ToListAsync();
 
-            // Sort by StartTime in memory
-            entries = entries
+            // sortujemy po dacie i godzinie rozpoczęcia
+            wpisyCzasu = wpisyCzasu
                 .OrderBy(e => e.EntryDate)
                 .ThenBy(e => e.StartTime)
                 .ToList();
 
-            // Fetch day markers
-            var dayMarkers = await _context.DayMarkers
-                .Where(d => d.EmployeeId == employee.Id && d.Date >= weekStart && d.Date <= weekEnd)
+            // pobieramy markery dni (urlopy, choroby itp)
+            var markeryDni = await _context.DayMarkers
+                .Where(d => d.EmployeeId == wybranyPracownik.Id && d.Date >= poczatekTygodnia && d.Date <= koniecTygodnia)
                 .ToListAsync();
 
-            // Filter projects: Employee sees only assigned projects, Admin/Manager see all
-            List<Project> projects;
-            if (user.Role == UserRole.Employee)
+            // filtrujemy projekty - pracownik widzi tylko przypisane mu projekty
+            List<Project> dostepneProjekty;
+            if (aktualnyUzytkownik.Role == UserRole.Employee)
             {
-                // Load employee with projects
-                var empWithProjects = await _context.Employees
+                var pracownikZProjektami = await _context.Employees
                     .Include(e => e.Projects)
-                    .FirstOrDefaultAsync(e => e.Id == employee.Id);
+                    .FirstOrDefaultAsync(e => e.Id == wybranyPracownik.Id);
                 
-                var projectsList = empWithProjects?.Projects.ToList() ?? new List<Project>();
-                projects = projectsList.OrderBy(p => p.Name).ToList();
+                var listaProjektow = pracownikZProjektami?.Projects.ToList() ?? new List<Project>();
+                dostepneProjekty = listaProjektow.OrderBy(p => p.Name).ToList();
             }
             else
             {
-                projects = await _context.Projects.ToListAsync();
-                projects = projects.OrderBy(p => p.Name).ToList();
+                dostepneProjekty = await _context.Projects.ToListAsync();
+                dostepneProjekty = dostepneProjekty.OrderBy(p => p.Name).ToList();
             }
 
-            var entriesByDay = new Dictionary<DateTime, List<TimeGridEntry>>();
-            var markersByDay = new Dictionary<DateTime, DayMarker>();
+            // organizujemy wpisy według dni
+            var wpisyPoDniach = new Dictionary<DateTime, List<TimeGridEntry>>();
+            var markeryPoDniach = new Dictionary<DateTime, DayMarker>();
 
             for (int i = 0; i < 7; i++)
             {
-                var day = weekStart.AddDays(i);
-                var dayEntries = entries
-                    .Where(e => e.EntryDate.Date == day)
+                var dzien = poczatekTygodnia.AddDays(i);
+                var wpisyDnia = wpisyCzasu
+                    .Where(e => e.EntryDate.Date == dzien)
                     .Select(e => new TimeGridEntry
                     {
                         Id = e.Id,
@@ -134,55 +136,57 @@ namespace TimeTrackerApp.Controllers
                         ProjectId = e.ProjectId,
                         ProjectName = e.Project?.Name,
                         Description = e.Description,
-                        CreatedBy = e.CreatedByUser != null ? string.Format("{0} {1}", e.CreatedByUser.FirstName, e.CreatedByUser.LastName) : "System"
+                        CreatedBy = e.CreatedByUser != null ? $"{e.CreatedByUser.FirstName} {e.CreatedByUser.LastName}" : "System"
                     })
                     .ToList();
                 
-                dayEntries = dayEntries.OrderBy(e => e.StartTime).ToList();
-                entriesByDay[day] = dayEntries;
+                wpisyDnia = wpisyDnia.OrderBy(e => e.StartTime).ToList();
+                wpisyPoDniach[dzien] = wpisyDnia;
 
-                var marker = dayMarkers.FirstOrDefault(d => d.Date.Date == day);
+                var marker = markeryDni.FirstOrDefault(d => d.Date.Date == dzien);
                 if (marker != null)
                 {
-                    markersByDay[day] = marker;
+                    markeryPoDniach[dzien] = marker;
                 }
             }
 
-            var employeeName = string.Format("{0} {1}", employee.User.FirstName, employee.User.LastName);
+            var nazwaPracownika = $"{wybranyPracownik.User.FirstName} {wybranyPracownik.User.LastName}";
             
-            var vm = new WeeklyTimeGridViewModel
+            // tworzymy model widoku do wyświetlenia
+            var viewModel = new WeeklyTimeGridViewModel
             {
-                WeekStart = weekStart,
-                EmployeeId = employee.Id,
-                EmployeeName = employeeName,
-                Projects = projects,
-                EntriesByDay = entriesByDay,
-                DayMarkers = markersByDay,
-                AllEmployees = allEmployees,
-                CanSelectEmployee = user.Role == UserRole.Admin || user.Role == UserRole.Manager
+                WeekStart = poczatekTygodnia,
+                EmployeeId = wybranyPracownik.Id,
+                EmployeeName = nazwaPracownika,
+                Projects = dostepneProjekty,
+                EntriesByDay = wpisyPoDniach,
+                DayMarkers = markeryPoDniach,
+                AllEmployees = wszyscyPracownicy,
+                CanSelectEmployee = CzyMaUprawnienia(aktualnyUzytkownik.Role)
             };
 
-            return View(vm);
+            return View(viewModel);
         }
 
         [HttpPost]
         public async Task<IActionResult> AddEntry([FromBody] AddEntryRequest request)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var user = await _context.Users.FindAsync(userId);
-            var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
+            var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
+            var pracownik = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
 
-            if (employee == null && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+            // sprawdzamy uprawnienia
+            if (pracownik == null && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
             {
                 return Json(new { success = false, message = "Pracownik nie znaleziony" });
             }
 
-            if (employee != null && request.EmployeeId != employee.Id && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+            if (pracownik != null && request.EmployeeId != pracownik.Id && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
             {
                 return Json(new { success = false, message = "Brak uprawnień" });
             }
 
-            var entry = new TimeEntry
+            // tworzymy nowy wpis czasu
+            var nowyWpis = new TimeEntry
             {
                 EmployeeId = request.EmployeeId,
                 EntryDate = request.Date,
@@ -190,36 +194,37 @@ namespace TimeTrackerApp.Controllers
                 EndTime = request.EndTime,
                 ProjectId = request.ProjectId,
                 Description = request.Description,
-                CreatedBy = userId,
+                CreatedBy = aktualnyUzytkownik.Id,
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.TimeEntries.Add(entry);
+            _context.TimeEntries.Add(nowyWpis);
             await _context.SaveChangesAsync();
 
-            return Json(new { success = true, entryId = entry.Id });
+            return Json(new { success = true, entryId = nowyWpis.Id });
         }
 
         [HttpPost]
         public async Task<IActionResult> UpdateEntry([FromBody] UpdateEntryRequest request)
         {
-            var entry = await _context.TimeEntries.FindAsync(request.Id);
-            if (entry == null)
+            var wpis = await _context.TimeEntries.FindAsync(request.Id);
+            if (wpis == null)
             {
                 return Json(new { success = false, message = "Wpis nie znaleziony" });
             }
 
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var user = await _context.Users.FindAsync(userId);
-            var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
+            var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
+            var pracownik = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
 
-            if (employee != null && entry.EmployeeId != employee.Id && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+            // tylko właściciel lub admin/manager może edytować
+            if (pracownik != null && wpis.EmployeeId != pracownik.Id && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
             {
                 return Json(new { success = false, message = "Brak uprawnień" });
             }
 
-            entry.ProjectId = request.ProjectId;
-            entry.Description = request.Description;
+            // aktualizujemy dane
+            wpis.ProjectId = request.ProjectId;
+            wpis.Description = request.Description;
 
             await _context.SaveChangesAsync();
 
@@ -229,22 +234,22 @@ namespace TimeTrackerApp.Controllers
         [HttpPost]
         public async Task<IActionResult> DeleteEntry([FromBody] DeleteEntryRequest request)
         {
-            var entry = await _context.TimeEntries.FindAsync(request.Id);
-            if (entry == null)
+            var wpis = await _context.TimeEntries.FindAsync(request.Id);
+            if (wpis == null)
             {
                 return Json(new { success = false, message = "Wpis nie znaleziony" });
             }
 
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var user = await _context.Users.FindAsync(userId);
-            var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
+            var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
+            var pracownik = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
 
-            if (employee != null && entry.EmployeeId != employee.Id && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+            // tylko właściciel lub admin/manager może usunąć
+            if (pracownik != null && wpis.EmployeeId != pracownik.Id && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
             {
                 return Json(new { success = false, message = "Brak uprawnień" });
             }
 
-            _context.TimeEntries.Remove(entry);
+            _context.TimeEntries.Remove(wpis);
             await _context.SaveChangesAsync();
 
             return Json(new { success = true });
@@ -253,43 +258,42 @@ namespace TimeTrackerApp.Controllers
         [HttpPost]
         public async Task<IActionResult> SetDayMarker([FromBody] SetDayMarkerRequest request)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var user = await _context.Users.FindAsync(userId);
-            var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
+            var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
+            var pracownik = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
 
-            if (employee == null && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+            if (pracownik == null && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
             {
                 return Json(new { success = false, message = "Pracownik nie znaleziony" });
             }
 
-            if (employee != null && request.EmployeeId != employee.Id && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+            if (pracownik != null && request.EmployeeId != pracownik.Id && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
             {
                 return Json(new { success = false, message = "Brak uprawnień" });
             }
 
-            // Check if marker already exists
-            var existing = await _context.DayMarkers
+            // sprawdzamy czy marker już istnieje
+            var istniejacyMarker = await _context.DayMarkers
                 .FirstOrDefaultAsync(d => d.EmployeeId == request.EmployeeId && d.Date.Date == request.Date.Date);
 
-            if (existing != null)
+            if (istniejacyMarker != null)
             {
-                // Update
-                existing.Type = request.Type;
-                existing.Note = request.Note;
+                // aktualizujemy istniejący
+                istniejacyMarker.Type = request.Type;
+                istniejacyMarker.Note = request.Note;
             }
             else
             {
-                // Create
-                var marker = new DayMarker
+                // tworzymy nowy
+                var nowyMarker = new DayMarker
                 {
                     EmployeeId = request.EmployeeId,
                     Date = request.Date.Date,
                     Type = request.Type,
                     Note = request.Note,
-                    CreatedBy = userId,
+                    CreatedBy = aktualnyUzytkownik.Id,
                     CreatedAt = DateTime.UtcNow
                 };
-                _context.DayMarkers.Add(marker);
+                _context.DayMarkers.Add(nowyMarker);
             }
 
             await _context.SaveChangesAsync();
@@ -299,11 +303,10 @@ namespace TimeTrackerApp.Controllers
         [HttpPost]
         public async Task<IActionResult> RemoveDayMarker([FromBody] RemoveDayMarkerRequest request)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var user = await _context.Users.FindAsync(userId);
-            var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
+            var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
+            var pracownik = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
 
-            if (employee == null && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+            if (pracownik == null && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
             {
                 return Json(new { success = false, message = "Pracownik nie znaleziony" });
             }
@@ -313,7 +316,7 @@ namespace TimeTrackerApp.Controllers
 
             if (marker != null)
             {
-                if (employee != null && marker.EmployeeId != employee.Id && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+                if (pracownik != null && marker.EmployeeId != pracownik.Id && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
                 {
                     return Json(new { success = false, message = "Brak uprawnień" });
                 }
@@ -325,13 +328,26 @@ namespace TimeTrackerApp.Controllers
             return Json(new { success = true });
         }
 
-        private static DateTime StartOfWeek(DateTime date, DayOfWeek start)
+        // metody pomocnicze
+        private async Task<User> PobierzAktualnegoUzytkownika()
         {
-            int diff = (7 + (date.DayOfWeek - start)) % 7;
-            return date.AddDays(-1 * diff).Date;
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            return await _context.Users.FindAsync(userId);
+        }
+
+        private bool CzyMaUprawnienia(UserRole rola)
+        {
+            return rola == UserRole.Admin || rola == UserRole.Manager;
+        }
+
+        private static DateTime PoczatekTygodnia(DateTime data, DayOfWeek startDnia)
+        {
+            int roznica = (7 + (data.DayOfWeek - startDnia)) % 7;
+            return data.AddDays(-1 * roznica).Date;
         }
     }
 
+    // klasy pomocnicze dla requestów
     public class AddEntryRequest
     {
         public int EmployeeId { get; set; }
