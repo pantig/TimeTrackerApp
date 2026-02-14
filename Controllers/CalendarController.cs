@@ -152,7 +152,7 @@ namespace TimeTrackerApp.Controllers
                 EndTime = request.EndTime,
                 ProjectId = request.ProjectId,
                 Description = request.Description,
-                IsApproved = false,
+                IsApproved = true, // Auto-approve all entries
                 CreatedBy = userId,
                 CreatedAt = DateTime.UtcNow
             };
@@ -170,11 +170,6 @@ namespace TimeTrackerApp.Controllers
             if (entry == null)
             {
                 return Json(new { success = false, message = "Wpis nie znaleziony" });
-            }
-
-            if (entry.IsApproved)
-            {
-                return Json(new { success = false, message = "Nie można edytować zatwierdzonego wpisu" });
             }
 
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
@@ -201,11 +196,6 @@ namespace TimeTrackerApp.Controllers
             if (entry == null)
             {
                 return Json(new { success = false, message = "Wpis nie znaleziony" });
-            }
-
-            if (entry.IsApproved)
-            {
-                return Json(new { success = false, message = "Nie można usunąć zatwierdzonego wpisu" });
             }
 
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);

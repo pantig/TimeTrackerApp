@@ -75,13 +75,12 @@
                             var top = startHour * 60; // 60px per hour
                             var height = duration * 60;
 
-                            <div class="timegrid-entry @(entry.IsApproved ? "approved" : "pending")"
+                            <div class="timegrid-entry"
                                  style="top: @(top)px; height: @(height)px;"
                                  data-entry-id="@entry.Id"
                                  data-start="@entry.StartTime.ToString()"
                                  data-end="@entry.EndTime.ToString()"
-                                 data-project-id="@entry.ProjectId"
-                                 data-approved="@entry.IsApproved.ToString().ToLower()">
+                                 data-project-id="@entry.ProjectId">
                                 <div class="entry-time">@entry.StartTime.ToString(@"hh\:mm") – @entry.EndTime.ToString(@"hh\:mm")</div>
                                 <div class="entry-project">@(entry.ProjectName ?? "(brak projektu)")</div>
                                 @if (!string.IsNullOrEmpty(entry.Description))
@@ -89,11 +88,8 @@
                                     <div class="entry-desc">@entry.Description</div>
                                 }
                                 <div class="entry-created-by">✍️ @entry.CreatedBy</div>
-                                @if (!entry.IsApproved)
-                                {
-                                    <button class="entry-edit" onclick="editEntry(@entry.Id)">✎</button>
-                                    <button class="entry-delete" onclick="deleteEntry(@entry.Id)">×</button>
-                                }
+                                <button class="entry-edit" onclick="editEntry(@entry.Id)">✎</button>
+                                <button class="entry-delete" onclick="deleteEntry(@entry.Id)">×</button>
                             </div>
                         }
                     </div>
@@ -103,9 +99,7 @@
     </div>
 
     <div class="timegrid-legend">
-        <span class="badge badge-success">Zatwierdzone</span>
-        <span class="badge badge-warning">Oczekujące</span>
-        <div class="hint" style="margin-left: auto;">Kliknij i przeciągnij na siatce, aby dodać nowy wpis</div>
+        <div class="hint">Kliknij i przeciągnij na siatce, aby dodać nowy wpis</div>
     </div>
 </div>
 
@@ -238,12 +232,6 @@ function openModalForNewEntry() {
 function editEntry(entryId) {
     const entryEl = document.querySelector(`[data-entry-id="${entryId}"]`);
     if (!entryEl) return;
-    
-    const isApproved = entryEl.dataset.approved === 'true';
-    if (isApproved) {
-        alert('Nie można edytować zatwierdzonego wpisu');
-        return;
-    }
     
     const dayCol = entryEl.closest('.timegrid-day-col');
     const date = dayCol.dataset.date;
