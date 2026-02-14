@@ -60,7 +60,10 @@ namespace TimeTrackerApp.Controllers
             else
             {
                 // Regular employee can only view own calendar
-                employee = await _context.Employees.Include(e => e.User).FirstOrDefaultAsync(e => e.UserId == userId);
+                employee = await _context.Employees
+                    .Include(e => e.User)
+                    .Include(e => e.Projects)
+                    .FirstOrDefaultAsync(e => e.UserId == userId);
             }
 
             if (employee == null)
@@ -73,7 +76,7 @@ namespace TimeTrackerApp.Controllers
             var weekStart = StartOfWeek(anchor, DayOfWeek.Monday);
             var weekEnd = weekStart.AddDays(6);
 
-            // Fetch entries from database without sorting by StartTime (SQLite limitation)
+            // Fetch entries from database
             var entries = await _context.TimeEntries
                 .Include(e => e.Employee)
                     .ThenInclude(e => e.User)
@@ -83,12 +86,33 @@ namespace TimeTrackerApp.Controllers
                 .OrderBy(e => e.EntryDate)
                 .ToListAsync();
 
-            // Sort by StartTime in memory (LINQ to Objects)
+            // Sort by StartTime in memory
             entries = entries.OrderBy(e => e.EntryDate).ThenBy(e => e.StartTime).ToList();
 
-            var projects = await _context.Projects.OrderBy(p => p.Name).ToListAsync();
+            // Fetch day markers
+            var dayMarkers = await _context.DayMarkers
+                .Where(d => d.EmployeeId == employee.Id && d.Date >= weekStart && d.Date <= weekEnd)
+                .ToListAsync();
+
+            // Filter projects: Employee sees only assigned projects, Admin/Manager see all
+            List<Project> projects;
+            if (user.Role == UserRole.Employee)
+            {
+                // Load employee with projects
+                var empWithProjects = await _context.Employees
+                    .Include(e => e.Projects)
+                    .FirstOrDefaultAsync(e => e.Id == employee.Id);
+                
+                projects = empWithProjects?.Projects.OrderBy(p => p.Name).ToList() ?? new List<Project>();
+            }
+            else
+            {
+                projects = await _context.Projects.OrderBy(p => p.Name).ToListAsync();
+            }
 
             var entriesByDay = new Dictionary<DateTime, List<TimeGridEntry>>();
+            var markersByDay = new Dictionary<DateTime, DayMarker>();
+
             for (int i = 0; i < 7; i++)
             {
                 var day = weekStart.AddDays(i);
@@ -109,6 +133,12 @@ namespace TimeTrackerApp.Controllers
                     .ToList();
 
                 entriesByDay[day] = dayEntries;
+
+                var marker = dayMarkers.FirstOrDefault(d => d.Date.Date == day);
+                if (marker != null)
+                {
+                    markersByDay[day] = marker;
+                }
             }
 
             var vm = new WeeklyTimeGridViewModel
@@ -118,6 +148,7 @@ namespace TimeTrackerApp.Controllers
                 EmployeeName = $"{employee.User.FirstName} {employee.User.LastName}",
                 Projects = projects,
                 EntriesByDay = entriesByDay,
+                DayMarkers = markersByDay,
                 AllEmployees = allEmployees,
                 CanSelectEmployee = user.Role == UserRole.Admin || user.Role == UserRole.Manager
             };
@@ -137,7 +168,6 @@ namespace TimeTrackerApp.Controllers
                 return Json(new { success = false, message = "Pracownik nie znaleziony" });
             }
 
-            // Check if user is authorized to add for this employee
             if (employee != null && request.EmployeeId != employee.Id && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
             {
                 return Json(new { success = false, message = "Brak uprawnień" });
@@ -211,6 +241,81 @@ namespace TimeTrackerApp.Controllers
             return Json(new { success = true });
         }
 
+        [HttpPost]
+        public async Task<IActionResult> SetDayMarker([FromBody] SetDayMarkerRequest request)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var user = await _context.Users.FindAsync(userId);
+            var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
+
+            if (employee == null && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+            {
+                return Json(new { success = false, message = "Pracownik nie znaleziony" });
+            }
+
+            if (employee != null && request.EmployeeId != employee.Id && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+            {
+                return Json(new { success = false, message = "Brak uprawnień" });
+            }
+
+            // Check if marker already exists
+            var existing = await _context.DayMarkers
+                .FirstOrDefaultAsync(d => d.EmployeeId == request.EmployeeId && d.Date.Date == request.Date.Date);
+
+            if (existing != null)
+            {
+                // Update
+                existing.Type = request.Type;
+                existing.Note = request.Note;
+            }
+            else
+            {
+                // Create
+                var marker = new DayMarker
+                {
+                    EmployeeId = request.EmployeeId,
+                    Date = request.Date.Date,
+                    Type = request.Type,
+                    Note = request.Note,
+                    CreatedBy = userId,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.DayMarkers.Add(marker);
+            }
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> RemoveDayMarker([FromBody] RemoveDayMarkerRequest request)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var user = await _context.Users.FindAsync(userId);
+            var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
+
+            if (employee == null && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+            {
+                return Json(new { success = false, message = "Pracownik nie znaleziony" });
+            }
+
+            var marker = await _context.DayMarkers
+                .FirstOrDefaultAsync(d => d.EmployeeId == request.EmployeeId && d.Date.Date == request.Date.Date);
+
+            if (marker != null)
+            {
+                if (employee != null && marker.EmployeeId != employee.Id && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+                {
+                    return Json(new { success = false, message = "Brak uprawnień" });
+                }
+
+                _context.DayMarkers.Remove(marker);
+                await _context.SaveChangesAsync();
+            }
+
+            return Json(new { success = true });
+        }
+
         private static DateTime StartOfWeek(DateTime date, DayOfWeek start)
         {
             int diff = (7 + (date.DayOfWeek - start)) % 7;
@@ -238,5 +343,19 @@ namespace TimeTrackerApp.Controllers
     public class DeleteEntryRequest
     {
         public int Id { get; set; }
+    }
+
+    public class SetDayMarkerRequest
+    {
+        public int EmployeeId { get; set; }
+        public DateTime Date { get; set; }
+        public DayType Type { get; set; }
+        public string? Note { get; set; }
+    }
+
+    public class RemoveDayMarkerRequest
+    {
+        public int EmployeeId { get; set; }
+        public DateTime Date { get; set; }
     }
 }
