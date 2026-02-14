@@ -19,5 +19,9 @@ namespace TimeTrackerApp.Models.ViewModels
         public DateTime NextWeek => WeekStart.AddDays(7);
 
         public List<DateTime> DaysOfWeek => Enumerable.Range(0, 7).Select(i => WeekStart.AddDays(i)).ToList();
+
+        // For admin/manager: list of all employees to select from
+        public List<Employee>? AllEmployees { get; set; }
+        public bool CanSelectEmployee { get; set; }
     }
 }

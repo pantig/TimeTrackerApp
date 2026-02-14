@@ -11,7 +11,22 @@
             <a asp-action="Index" asp-route-date="@Model.PrevWeek.ToString("yyyy-MM-dd")" asp-route-employeeId="@Model.EmployeeId" class="btn-calendar-nav">&laquo;</a>
             <div class="timegrid-title">
                 <h2>@Model.WeekStart.ToString("d MMM") – @Model.WeekEnd.ToString("d MMM yyyy")</h2>
-                <div class="muted">Pracownik: <strong>@Model.EmployeeName</strong></div>
+                <div class="muted">
+                    @if (Model.CanSelectEmployee && Model.AllEmployees != null)
+                    {
+                        <span>Pracownik: </span>
+                        <select id="employeeSelect" class="employee-select" onchange="changeEmployee(this.value)">
+                            @foreach (var emp in Model.AllEmployees)
+                            {
+                                <option value="@emp.Id" selected="@(emp.Id == Model.EmployeeId)">@emp.User.FirstName @emp.User.LastName</option>
+                            }
+                        </select>
+                    }
+                    else
+                    {
+                        <span>Pracownik: <strong>@Model.EmployeeName</strong></span>
+                    }
+                </div>
             </div>
             <a asp-action="Index" asp-route-date="@Model.NextWeek.ToString("yyyy-MM-dd")" asp-route-employeeId="@Model.EmployeeId" class="btn-calendar-nav">&raquo;</a>
         </div>
@@ -140,6 +155,11 @@ let isSelecting = false;
 let selectionStart = null;
 let selectionEnd = null;
 let currentDayCol = null;
+
+function changeEmployee(newEmployeeId) {
+    const currentDate = '@Model.WeekStart.ToString("yyyy-MM-dd")';
+    window.location.href = `@Url.Action("Index", "Calendar")?date=${currentDate}&employeeId=${newEmployeeId}`;
+}
 
 // Mouse selection for creating new entries
 document.querySelectorAll('.timegrid-day-col').forEach(dayCol => {

@@ -32,18 +32,40 @@ namespace TimeTrackerApp.Controllers
             var user = await _context.Users.FindAsync(userId);
 
             Employee? employee;
+            List<Employee>? allEmployees = null;
 
-            if (employeeId.HasValue && (user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+            // Admin/Manager can view any employee's calendar
+            if (user.Role == UserRole.Admin || user.Role == UserRole.Manager)
             {
-                employee = await _context.Employees.Include(e => e.User).FirstOrDefaultAsync(e => e.Id == employeeId.Value);
+                allEmployees = await _context.Employees
+                    .Include(e => e.User)
+                    .OrderBy(e => e.User.LastName)
+                    .ThenBy(e => e.User.FirstName)
+                    .ToListAsync();
+
+                if (employeeId.HasValue)
+                {
+                    employee = allEmployees.FirstOrDefault(e => e.Id == employeeId.Value);
+                }
+                else
+                {
+                    // Default to first employee or own employee if exists
+                    employee = await _context.Employees.Include(e => e.User).FirstOrDefaultAsync(e => e.UserId == userId);
+                    if (employee == null && allEmployees.Any())
+                    {
+                        employee = allEmployees.First();
+                    }
+                }
             }
             else
             {
+                // Regular employee can only view own calendar
                 employee = await _context.Employees.Include(e => e.User).FirstOrDefaultAsync(e => e.UserId == userId);
             }
 
             if (employee == null)
             {
+                TempData["ErrorMessage"] = "Nie znaleziono profilu pracownika. Skontaktuj się z administratorem.";
                 return RedirectToAction("Index", "TimeEntries");
             }
 
@@ -87,7 +109,9 @@ namespace TimeTrackerApp.Controllers
                 EmployeeId = employee.Id,
                 EmployeeName = $"{employee.User.FirstName} {employee.User.LastName}",
                 Projects = projects,
-                EntriesByDay = entriesByDay
+                EntriesByDay = entriesByDay,
+                AllEmployees = allEmployees,
+                CanSelectEmployee = user.Role == UserRole.Admin || user.Role == UserRole.Manager
             };
 
             return View(vm);
@@ -100,13 +124,13 @@ namespace TimeTrackerApp.Controllers
             var user = await _context.Users.FindAsync(userId);
             var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
 
-            if (employee == null)
+            if (employee == null && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
             {
                 return Json(new { success = false, message = "Pracownik nie znaleziony" });
             }
 
             // Check if user is authorized to add for this employee
-            if (request.EmployeeId != employee.Id && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+            if (employee != null && request.EmployeeId != employee.Id && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
             {
                 return Json(new { success = false, message = "Brak uprawnień" });
             }
@@ -146,7 +170,7 @@ namespace TimeTrackerApp.Controllers
             var user = await _context.Users.FindAsync(userId);
             var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
 
-            if (entry.EmployeeId != employee?.Id && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+            if (employee != null && entry.EmployeeId != employee.Id && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
             {
                 return Json(new { success = false, message = "Brak uprawnień" });
             }
@@ -177,7 +201,7 @@ namespace TimeTrackerApp.Controllers
             var user = await _context.Users.FindAsync(userId);
             var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
 
-            if (entry.EmployeeId != employee?.Id && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+            if (employee != null && entry.EmployeeId != employee.Id && !(user.Role == UserRole.Admin || user.Role == UserRole.Manager))
             {
                 return Json(new { success = false, message = "Brak uprawnień" });
             }
