@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using TimeTrackerApp.Data;
 using TimeTrackerApp.Models;
 using TimeTrackerApp.Models.ViewModels;
@@ -52,7 +56,7 @@ namespace TimeTrackerApp.Controllers
 
             // Grupowanie po pracownikach
             var employeeHours = timeEntries
-                .GroupBy(t => new { t.EmployeeId, EmployeeName = $"{t.Employee.User.FirstName} {t.Employee.User.LastName}" })
+                .GroupBy(t => new { t.EmployeeId, EmployeeName = string.Format("{0} {1}", t.Employee.User.FirstName, t.Employee.User.LastName) })
                 .Select(g => new EmployeeHoursSummary
                 {
                     EmployeeId = g.Key.EmployeeId,
@@ -60,8 +64,9 @@ namespace TimeTrackerApp.Controllers
                     TotalHours = g.Sum(t => t.TotalHours),
                     EntryCount = g.Count()
                 })
-                .OrderByDescending(e => e.TotalHours)
                 .ToList();
+            
+            employeeHours = employeeHours.OrderByDescending(e => e.TotalHours).ToList();
 
             // Grupowanie po projektach
             var projectHours = projects
@@ -74,8 +79,9 @@ namespace TimeTrackerApp.Controllers
                     IsOverBudget = p.HoursBudget.HasValue && p.TimeEntries.Sum(te => te.TotalHours) > p.HoursBudget.Value,
                     EntryCount = p.TimeEntries.Count
                 })
-                .OrderByDescending(p => p.TotalHours)
                 .ToList();
+            
+            projectHours = projectHours.OrderByDescending(p => p.TotalHours).ToList();
 
             var viewModel = new OrganizationSummaryViewModel
             {
@@ -120,9 +126,9 @@ namespace TimeTrackerApp.Controllers
                 // Admin/Manager wybiera pracownika
                 allEmployees = await _context.Employees
                     .Include(e => e.User)
-                    .OrderBy(e => e.User.LastName)
-                    .ThenBy(e => e.User.FirstName)
                     .ToListAsync();
+                
+                allEmployees = allEmployees.OrderBy(e => e.User.LastName).ThenBy(e => e.User.FirstName).ToList();
 
                 if (employeeId.HasValue)
                 {
@@ -145,13 +151,13 @@ namespace TimeTrackerApp.Controllers
                 .Include(t => t.Project)
                 .Include(t => t.CreatedByUser)
                 .Where(t => t.EmployeeId == selectedEmployee.Id && t.EntryDate >= fromDate && t.EntryDate <= toDate)
-                .OrderBy(t => t.EntryDate)
                 .ToListAsync();
+            
+            timeEntries = timeEntries.OrderBy(t => t.EntryDate).ToList();
 
             // Grupowanie po dniach
             var entriesByDay = timeEntries
                 .GroupBy(t => t.EntryDate.Date)
-                .OrderBy(g => g.Key)
                 .Select(g => new DailyHoursReport
                 {
                     Date = g.Key,
@@ -159,6 +165,8 @@ namespace TimeTrackerApp.Controllers
                     Entries = g.ToList()
                 })
                 .ToList();
+            
+            entriesByDay = entriesByDay.OrderBy(g => g.Date).ToList();
 
             // Grupowanie po projektach
             var entriesByProject = timeEntries
@@ -169,13 +177,16 @@ namespace TimeTrackerApp.Controllers
                     TotalHours = g.Sum(t => t.TotalHours),
                     EntryCount = g.Count()
                 })
-                .OrderByDescending(p => p.TotalHours)
                 .ToList();
+            
+            entriesByProject = entriesByProject.OrderByDescending(p => p.TotalHours).ToList();
 
+            var employeeName = string.Format("{0} {1}", selectedEmployee.User.FirstName, selectedEmployee.User.LastName);
+            
             var viewModel = new MonthlyReportViewModel
             {
                 EmployeeId = selectedEmployee.Id,
-                EmployeeName = $"{selectedEmployee.User.FirstName} {selectedEmployee.User.LastName}",
+                EmployeeName = employeeName,
                 Year = selectedYear,
                 Month = selectedMonth,
                 FromDate = fromDate,
@@ -221,9 +232,9 @@ namespace TimeTrackerApp.Controllers
                 .Include(t => t.Project)
                 .Include(t => t.CreatedByUser)
                 .Where(t => t.EmployeeId == employeeId && t.EntryDate >= fromDate && t.EntryDate <= toDate)
-                .OrderBy(t => t.EntryDate)
-                .ThenBy(t => t.StartTime)
                 .ToListAsync();
+            
+            timeEntries = timeEntries.OrderBy(t => t.EntryDate).ThenBy(t => t.StartTime).ToList();
 
             // Pobierz day markers
             var dayMarkers = await _context.DayMarkers
@@ -238,11 +249,11 @@ namespace TimeTrackerApp.Controllers
                 dayMarkerDict[date] = dayMarkers.FirstOrDefault(d => d.Date.Date == date);
             }
 
-            var employeeName = $"{employee.User.FirstName} {employee.User.LastName}";
+            var employeeName = string.Format("{0} {1}", employee.User.FirstName, employee.User.LastName);
             var excelBytes = _excelExportService.GenerateMonthlyReport(employeeName, year, month, timeEntries, dayMarkerDict);
 
             var monthName = new DateTime(year, month, 1).ToString("MMMM yyyy", new System.Globalization.CultureInfo("pl-PL"));
-            var fileName = $"{employee.User.FirstName}-{employee.User.LastName}-{monthName}.xlsx";
+            var fileName = string.Format("{0}-{1}-{2}.xlsx", employee.User.FirstName, employee.User.LastName, monthName);
 
             return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
