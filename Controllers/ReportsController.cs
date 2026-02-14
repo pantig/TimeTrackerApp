@@ -143,8 +143,10 @@ namespace TimeTrackerApp.Controllers
                 .Include(t => t.Project)
                 .Include(t => t.CreatedByUser)
                 .Where(t => t.EmployeeId == wybranyPracownik.Id && t.EntryDate >= dataOd && t.EntryDate <= dataDo)
-                .OrderBy(t => t.EntryDate)
                 .ToListAsync();
+            
+            // sortujemy w pamięci (SQLite nie obsługuje sortowania po TimeSpan)
+            wpisyCzasu = wpisyCzasu.OrderBy(t => t.EntryDate).ToList();
 
             // grupujemy po dniach
             var wpisyPoDniach = wpisyCzasu
@@ -219,9 +221,13 @@ namespace TimeTrackerApp.Controllers
                 .Include(t => t.Project)
                 .Include(t => t.CreatedByUser)
                 .Where(t => t.EmployeeId == employeeId && t.EntryDate >= dataOd && t.EntryDate <= dataDo)
+                .ToListAsync();
+            
+            // sortujemy w pamięci (SQLite nie obsługuje sortowania po TimeSpan w LINQ)
+            wpisyCzasu = wpisyCzasu
                 .OrderBy(t => t.EntryDate)
                 .ThenBy(t => t.StartTime)
-                .ToListAsync();
+                .ToList();
 
             // pobieramy markery dni
             var markeryDni = await _context.DayMarkers
