@@ -1,0 +1,154 @@
+@model TimeTrackerApp.Models.ViewModels.MonthlyReportViewModel
+
+@{
+    ViewData["Title"] = $"Raport miesięczny - {Model.MonthName}";
+}
+
+<div style="margin-top: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h2 style="margin: 0;">Raport miesięczny</h2>
+            <p class="hint" style="margin-top: 0.5rem;">{Model.MonthName} - @Model.EmployeeName</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            <a href="@Url.Action("ExportMonthlyExcel", new { employeeId = Model.EmployeeId, year = Model.Year, month = Model.Month })" 
+               class="btn btn-primary">
+                💾 Export Excel
+            </a>
+            <a asp-action="Summary" class="btn btn-secondary">Powrót do raportów</a>
+        </div>
+    </div>
+
+    <!-- Filtry -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="font-size: 1.125rem; margin-bottom: 1rem;">Filtry</h3>
+        <form method="get" asp-action="Monthly" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;">
+            
+            @if (Model.CanSelectEmployee && Model.AllEmployees != null)
+            {
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Pracownik</label>
+                    <select name="employeeId" class="form-control">
+                        @foreach (var emp in Model.AllEmployees)
+                        {
+                            <option value="@emp.Id" selected="@(emp.Id == Model.EmployeeId)">@emp.User.FirstName @emp.User.LastName</option>
+                        }
+                    </select>
+                </div>
+            }
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Rok</label>
+                <select name="year" class="form-control">
+                    @for (int y = DateTime.UtcNow.Year; y >= DateTime.UtcNow.Year - 2; y--)
+                    {
+                        <option value="@y" selected="@(y == Model.Year)">@y</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Miesiąc</label>
+                <select name="month" class="form-control">
+                    @for (int m = 1; m <= 12; m++)
+                    {
+                        var monthName = new DateTime(2000, m, 1).ToString("MMMM", new System.Globalization.CultureInfo("pl-PL"));
+                        <option value="@m" selected="@(m == Model.Month)">@monthName</option>
+                    }
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Pokaż raport</button>
+        </form>
+    </div>
+
+    <!-- Podsumowanie -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div class="card" style="text-align: center;">
+            <div style="font-size: 2.5rem; font-weight: 700; color: var(--accent); margin-bottom: 0.5rem;">@Model.TotalHours.ToString("0.0")</div>
+            <div style="color: var(--text-secondary); font-size: 0.875rem;">Przepracowanych godzin</div>
+        </div>
+        <div class="card" style="text-align: center;">
+            <div style="font-size: 2.5rem; font-weight: 700; color: var(--success); margin-bottom: 0.5rem;">@Model.TotalDays</div>
+            <div style="color: var(--text-secondary); font-size: 0.875rem;">Dni roboczych</div>
+        </div>
+        <div class="card" style="text-align: center;">
+            <div style="font-size: 2.5rem; font-weight: 700; color: var(--warning); margin-bottom: 0.5rem;">@(Model.TotalDays > 0 ? (Model.TotalHours / Model.TotalDays).ToString("0.0") : "0.0")</div>
+            <div style="color: var(--text-secondary); font-size: 0.875rem;">Średnia godzin/dzień</div>
+        </div>
+    </div>
+
+    <!-- Godziny po projektach -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="font-size: 1.125rem; margin-bottom: 1rem;">Godziny po projektach</h3>
+        @if (Model.EntriesByProject.Any())
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Projekt</th>
+                        <th style="text-align: center;">Liczba wpisów</th>
+                        <th style="text-align: right;">Godziny</th>
+                        <th style="text-align: right;">Procent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var project in Model.EntriesByProject)
+                    {
+                        var percentage = Model.TotalHours > 0 ? (project.TotalHours / Model.TotalHours * 100) : 0;
+                        <tr>
+                            <td><strong>@project.ProjectName</strong></td>
+                            <td style="text-align: center;">@project.EntryCount</td>
+                            <td style="text-align: right; font-weight: 600;">@project.TotalHours.ToString("0.0")h</td>
+                            <td style="text-align: right;">
+                                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem;">
+                                    <div style="flex: 0 0 100px; height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden;">
+                                        <div style="width: @percentage.ToString("0.0")%; height: 100%; background: var(--accent);"></div>
+                                    </div>
+                                    <span style="font-weight: 600;">@percentage.ToString("0.0")%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p style="color: var(--text-tertiary); text-align: center; padding: 2rem;">Brak wpisów czasu w tym miesiącu.</p>
+        }
+    </div>
+
+    <!-- Godziny po dniach -->
+    <div class="card">
+        <h3 style="font-size: 1.125rem; margin-bottom: 1rem;">Szczegóły dzienne</h3>
+        @if (Model.EntriesByDay.Any())
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Dzień tygodnia</th>
+                        <th style="text-align: center;">Liczba wpisów</th>
+                        <th style="text-align: right;">Godziny</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var day in Model.EntriesByDay)
+                    {
+                        <tr>
+                            <td><strong>@day.Date.ToString("yyyy-MM-dd")</strong></td>
+                            <td style="color: var(--text-secondary);">@day.Date.ToString("dddd", new System.Globalization.CultureInfo("pl-PL"))</td>
+                            <td style="text-align: center;">@day.Entries.Count</td>
+                            <td style="text-align: right; font-weight: 600; color: var(--accent);">@day.TotalHours.ToString("0.0")h</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p style="color: var(--text-tertiary); text-align: center; padding: 2rem;">Brak wpisów czasu w tym miesiącu.</p>
+        }
+    </div>
+</div>

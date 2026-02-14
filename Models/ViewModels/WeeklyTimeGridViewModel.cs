@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace TimeTrackerApp.Models.ViewModels
 {
     public class WeeklyTimeGridViewModel
@@ -14,6 +12,9 @@ namespace TimeTrackerApp.Models.ViewModels
 
         // All entries for the week, grouped by day and time
         public Dictionary<DateTime, List<TimeGridEntry>> EntriesByDay { get; set; } = new();
+
+        // Day markers (vacation, sick leave, etc.)
+        public Dictionary<DateTime, DayMarker> DayMarkers { get; set; } = new();
 
         public DateTime PrevWeek => WeekStart.AddDays(-7);
         public DateTime NextWeek => WeekStart.AddDays(7);

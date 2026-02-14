@@ -28,8 +28,6 @@ namespace TimeTrackerApp.Models
         [MaxLength(500)]
         public string Description { get; set; }
 
-        public bool IsApproved { get; set; } = false;
-
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         [ForeignKey("User")]
@@ -56,10 +54,10 @@ namespace TimeTrackerApp.Models
                     new[] { nameof(EndTime) });
             }
 
-            if (TotalHours > 12)
+            if (TotalHours > 24)
             {
                 yield return new ValidationResult(
-                    "Maksymalna liczba godzin na dzień to 12",
+                    "Maksymalna liczba godzin na dzień to 24",
                     new[] { nameof(EndTime) });
             }
 
@@ -70,10 +68,10 @@ namespace TimeTrackerApp.Models
                     new[] { nameof(EntryDate) });
             }
 
-            if (EntryDate.Date < DateTime.UtcNow.AddDays(-30).Date)
+            if (EntryDate.Date < DateTime.UtcNow.AddDays(-90).Date)
             {
                 yield return new ValidationResult(
-                    "Nie można dodawać wpisów starszych niż 30 dni",
+                    "Nie można dodawać wpisów starszych niż 90 dni",
                     new[] { nameof(EntryDate) });
             }
         }

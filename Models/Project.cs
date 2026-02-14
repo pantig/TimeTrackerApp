@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TimeTrackerApp.Models
 {
@@ -21,6 +22,9 @@ namespace TimeTrackerApp.Models
         public DateTime? EndDate { get; set; }
 
         public bool IsActive { get; set; } = true;
+
+        // Budżet godzinowy projektu
+        public decimal? HoursBudget { get; set; }
 
         // Nawigacja
         public virtual ICollection<TimeEntry> TimeEntries { get; set; } = new List<TimeEntry>();

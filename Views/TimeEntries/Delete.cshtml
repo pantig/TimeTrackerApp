@@ -1,33 +1,41 @@
-@using TimeTrackerApp.Models
-@model TimeEntry
+@model TimeTrackerApp.Models.TimeEntry
 
 @{
-    ViewData["Title"] = "Usuń wpis czasu";
+    ViewData["Title"] = "Usuń wpis";
 }
 
-<div class="form-container">
-    <h1>Usuń wpis czasu</h1>
-    <p class="alert alert-danger">Czy na pewno chcesz usunąć ten wpis czasu?</p>
+<h2>Usuń wpis czasu</h2>
 
-    <div class="details-section">
-        <dl class="row">
-            <dt class="col-sm-4">Pracownik</dt>
-            <dd class="col-sm-8">@Model.Employee?.EmployeeNumber</dd>
+<div class="alert alert-warning">
+    <p><strong>Uwaga!</strong> Czy na pewno chcesz usunąć ten wpis?</p>
+</div>
 
-            <dt class="col-sm-4">Data</dt>
-            <dd class="col-sm-8">@Model.EntryDate.ToShortDateString()</dd>
+<div class="card">
+    <dl>
+        <dt>Data</dt>
+        <dd>@Model.EntryDate.ToString("yyyy-MM-dd")</dd>
 
-            <dt class="col-sm-4">Czas</dt>
-            <dd class="col-sm-8">@Model.StartTime.ToString(@"hh\:mm") - @Model.EndTime.ToString(@"hh\:mm") (@Model.TotalHours.ToString("F2") h)</dd>
+        <dt>Pracownik</dt>
+        <dd>@Model.Employee.User.FirstName @Model.Employee.User.LastName</dd>
 
-            <dt class="col-sm-4">Opis</dt>
-            <dd class="col-sm-8">@Model.Description</dd>
-        </dl>
-    </div>
+        <dt>Projekt</dt>
+        <dd>@(Model.Project?.Name ?? "(brak)")</dd>
 
-    <form asp-action="Delete" method="post" class="form-actions">
+        <dt>Czas</dt>
+        <dd>@Model.StartTime.ToString(@"hh\:mm") – @Model.EndTime.ToString(@"hh\:mm")</dd>
+
+        <dt>Godziny</dt>
+        <dd><strong>@Model.TotalHours.ToString("0.0")h</strong></dd>
+
+        <dt>Opis</dt>
+        <dd>@(string.IsNullOrEmpty(Model.Description) ? "(brak)" : Model.Description)</dd>
+    </dl>
+
+    <form method="post" asp-action="Delete">
         <input type="hidden" asp-for="Id" />
-        <button type="submit" class="btn btn-danger">Usuń</button>
-        <a asp-action="Index" class="btn btn-secondary">Anuluj</a>
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+            <button type="submit" class="btn btn-danger">Usuń wpis</button>
+            <a asp-action="Index" class="btn btn-secondary">Anuluj</a>
+        </div>
     </form>
 </div>

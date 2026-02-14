@@ -1,0 +1,83 @@
+@model TimeTrackerApp.Models.Project
+
+@{
+    ViewData["Title"] = "Usuń projekt";
+}
+
+<div style="margin-top: 2rem;">
+    <h2>Usuń projekt</h2>
+
+    <div class="alert alert-warning">
+        <p><strong>Uwaga!</strong> Czy na pewno chcesz usunąć ten projekt?</p>
+        @if (Model.TimeEntries.Any())
+        {
+            <p style="margin-top: 0.5rem;"><strong>Projekt zawiera @Model.TimeEntries.Count wpisów czasu.</strong> Usunięcie projektu spowoduje ustawienie tych wpisów jako "bez projektu".</p>
+        }
+    </div>
+
+    <div class="card">
+        <dl>
+            <dt>Nazwa</dt>
+            <dd><strong>@Model.Name</strong></dd>
+
+            <dt>Opis</dt>
+            <dd>@(string.IsNullOrEmpty(Model.Description) ? "(brak)" : Model.Description)</dd>
+
+            <dt>Status</dt>
+            <dd>
+                @switch (Model.Status)
+                {
+                    case TimeTrackerApp.Models.ProjectStatus.Active:
+                        <span class="badge badge-success">Aktywny</span>
+                        break;
+                    case TimeTrackerApp.Models.ProjectStatus.Planning:
+                        <span class="badge badge-warning">Planowanie</span>
+                        break;
+                    case TimeTrackerApp.Models.ProjectStatus.OnHold:
+                        <span class="badge badge-secondary">Wstrzymany</span>
+                        break;
+                    case TimeTrackerApp.Models.ProjectStatus.Completed:
+                        <span class="badge badge-success">Zakończony</span>
+                        break;
+                }
+            </dd>
+
+            <dt>Budżet godzinowy</dt>
+            <dd>@(Model.HoursBudget.HasValue ? $"{Model.HoursBudget.Value:0.0}h" : "(brak)")</dd>
+
+            <dt>Data rozpoczęcia</dt>
+            <dd>@Model.StartDate.ToString("yyyy-MM-dd")</dd>
+
+            <dt>Data zakończenia</dt>
+            <dd>@(Model.EndDate.HasValue ? Model.EndDate.Value.ToString("yyyy-MM-dd") : "(brak)")</dd>
+
+            <dt>Przypisani pracownicy</dt>
+            <dd>
+                @if (Model.Employees.Any())
+                {
+                    <ul style="margin: 0; padding-left: 1.5rem;">
+                        @foreach (var emp in Model.Employees)
+                        {
+                            <li>@emp.User.FirstName @emp.User.LastName</li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <span style="color: var(--text-tertiary);">(brak)</span>
+                }
+            </dd>
+
+            <dt>Liczba wpisów czasu</dt>
+            <dd><strong>@Model.TimeEntries.Count</strong></dd>
+        </dl>
+
+        <form method="post" asp-action="Delete">
+            <input type="hidden" asp-for="Id" />
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-danger">Usuń projekt</button>
+                <a asp-action="Index" class="btn btn-secondary">Anuluj</a>
+            </div>
+        </form>
+    </div>
+</div>
