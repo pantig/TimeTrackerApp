@@ -14,6 +14,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Rejestracja serwisów
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();
+builder.Services.AddScoped<ExcelExportService>();
 
 // Autentykacja
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
