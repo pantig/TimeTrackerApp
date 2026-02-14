@@ -103,7 +103,6 @@ namespace TimeTrackerApp.Controllers
                         ProjectId = e.ProjectId,
                         ProjectName = e.Project?.Name,
                         Description = e.Description,
-                        IsApproved = e.IsApproved,
                         CreatedBy = e.CreatedByUser != null ? $"{e.CreatedByUser.FirstName} {e.CreatedByUser.LastName}" : "System"
                     })
                     .OrderBy(e => e.StartTime)
@@ -152,7 +151,6 @@ namespace TimeTrackerApp.Controllers
                 EndTime = request.EndTime,
                 ProjectId = request.ProjectId,
                 Description = request.Description,
-                IsApproved = true, // Auto-approve all entries
                 CreatedBy = userId,
                 CreatedAt = DateTime.UtcNow
             };
