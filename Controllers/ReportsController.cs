@@ -21,45 +21,77 @@ namespace TimeTrackerApp.Controllers
             _timeEntryService = timeEntryService;
         }
 
-        public async Task<IActionResult> Summary()
+        // Raport zbiorczy organizacji
+        [Authorize(Roles = "Admin,Manager")]
+        public async Task<IActionResult> Summary(int? year, int? month)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
             var user = await _context.Users.FindAsync(userId);
 
-            var fromDate = DateTime.UtcNow.AddMonths(-1);
-            var toDate = DateTime.UtcNow;
+            // Domyślne wartości: bieżący miesiąc
+            var selectedYear = year ?? DateTime.UtcNow.Year;
+            var selectedMonth = month ?? DateTime.UtcNow.Month;
 
-            var timeEntries = new List<TimeEntry>();
+            var fromDate = new DateTime(selectedYear, selectedMonth, 1);
+            var toDate = fromDate.AddMonths(1).AddDays(-1);
 
-            if (user.Role == UserRole.Employee)
-            {
-                var employee = _context.Employees.FirstOrDefault(e => e.UserId == userId);
-                if (employee != null)
-                    timeEntries = await _timeEntryService.GetTimeEntriesForEmployeeAsync(employee.Id, fromDate, toDate);
-            }
-            else if (user.Role == UserRole.Manager || user.Role == UserRole.Admin)
-            {
-                timeEntries = await _context.TimeEntries
-                    .Where(t => t.EntryDate >= fromDate && t.EntryDate <= toDate)
-                    .Include(t => t.Employee)
-                        .ThenInclude(e => e.User)
-                    .Include(t => t.Project)
-                    .ToListAsync();
-            }
+            // Pobierz wszystkie wpisy czasu w organizacji
+            var timeEntries = await _context.TimeEntries
+                .Include(t => t.Employee)
+                    .ThenInclude(e => e.User)
+                .Include(t => t.Project)
+                .Where(t => t.EntryDate >= fromDate && t.EntryDate <= toDate)
+                .ToListAsync();
 
-            var viewModel = new ReportViewModel
+            // Pobierz wszystkie projekty z sumą godzin
+            var projects = await _context.Projects
+                .Include(p => p.TimeEntries.Where(te => te.EntryDate >= fromDate && te.EntryDate <= toDate))
+                .ToListAsync();
+
+            // Grupowanie po pracownikach
+            var employeeHours = timeEntries
+                .GroupBy(t => new { t.EmployeeId, EmployeeName = $"{t.Employee.User.FirstName} {t.Employee.User.LastName}" })
+                .Select(g => new EmployeeHoursSummary
+                {
+                    EmployeeId = g.Key.EmployeeId,
+                    EmployeeName = g.Key.EmployeeName,
+                    TotalHours = g.Sum(t => t.TotalHours),
+                    EntryCount = g.Count()
+                })
+                .OrderByDescending(e => e.TotalHours)
+                .ToList();
+
+            // Grupowanie po projektach
+            var projectHours = projects
+                .Select(p => new ProjectBudgetSummary
+                {
+                    ProjectId = p.Id,
+                    ProjectName = p.Name,
+                    TotalHours = p.TimeEntries.Sum(te => te.TotalHours),
+                    HoursBudget = p.HoursBudget,
+                    IsOverBudget = p.HoursBudget.HasValue && p.TimeEntries.Sum(te => te.TotalHours) > p.HoursBudget.Value,
+                    EntryCount = p.TimeEntries.Count
+                })
+                .OrderByDescending(p => p.TotalHours)
+                .ToList();
+
+            var viewModel = new OrganizationSummaryViewModel
             {
+                Year = selectedYear,
+                Month = selectedMonth,
                 FromDate = fromDate,
                 ToDate = toDate,
-                TimeEntries = timeEntries,
-                Employees = await _context.Employees.ToListAsync(),
-                Projects = await _context.Projects.ToListAsync()
+                TotalHours = timeEntries.Sum(t => t.TotalHours),
+                TotalEmployees = employeeHours.Count,
+                TotalProjects = projectHours.Count(p => p.TotalHours > 0),
+                EmployeeHours = employeeHours,
+                ProjectHours = projectHours
             };
 
             return View(viewModel);
         }
 
-        // Nowy raport miesięczny
+        // Raport miesięczny pracownika
         public async Task<IActionResult> Monthly(int? employeeId, int? year, int? month)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
@@ -155,21 +187,6 @@ namespace TimeTrackerApp.Controllers
             };
 
             return View(viewModel);
-        }
-
-        [Authorize(Roles = "Admin,Manager")]
-        public async Task<IActionResult> Approval()
-        {
-            var unapprovedEntries = await _timeEntryService.GetUnapprovedEntriesAsync();
-            return View(unapprovedEntries);
-        }
-
-        [Authorize(Roles = "Admin,Manager")]
-        [HttpPost]
-        public async Task<IActionResult> ApproveEntry(int id)
-        {
-            await _timeEntryService.ApproveTimeEntryAsync(id);
-            return RedirectToAction(nameof(Approval));
         }
     }
 }

@@ -1,55 +1,156 @@
-@using TimeTrackerApp.Models.ViewModels
-@model ReportViewModel
+@model TimeTrackerApp.Models.ViewModels.OrganizationSummaryViewModel
 
 @{
-    ViewData["Title"] = "Podsumowanie";
+    ViewData["Title"] = $"Raport zbiorczy - {Model.MonthName}";
 }
 
-<div class="report-container">
-    <h1>Raport podsumowujący</h1>
-
-    <div class="report-filters">
-        <p>Okres: <strong>@Model.FromDate.ToString("yyyy-MM-dd")</strong> do <strong>@Model.ToDate.ToString("yyyy-MM-dd")</strong></p>
-    </div>
-
-    <div class="report-summary">
-        <div class="summary-card">
-            <h3>Razem godzin</h3>
-            <p class="summary-value">@Model.TotalHours.ToString("F2")</p>
-        </div>
-        <div class="summary-card">
-            <h3>Razem zarobki</h3>
-            <p class="summary-value">@Model.TotalEarnings.ToString("C2")</p>
-        </div>
-        <div class="summary-card">
-            <h3>Ilość wpisów</h3>
-            <p class="summary-value">@Model.TimeEntries.Count</p>
+<div style="margin-top: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h2 style="margin: 0;">Raport zbiorczy organizacji</h2>
+            <p class="hint" style="margin-top: 0.5rem;">{Model.MonthName}</p>
         </div>
     </div>
 
-    <table class="data-table">
-        <thead>
-        <tr>
-            <th>Data</th>
-            <th>Pracownik</th>
-            <th>Projekt</th>
-            <th>Godziny</th>
-            <th>Stawka/h</th>
-            <th>Suma</th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var entry in Model.TimeEntries.OrderByDescending(e => e.EntryDate))
+    <!-- Filtry -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="font-size: 1.125rem; margin-bottom: 1rem;">Filtry</h3>
+        <form method="get" asp-action="Summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Rok</label>
+                <select name="year" class="form-control">
+                    @for (int y = DateTime.UtcNow.Year; y >= DateTime.UtcNow.Year - 2; y--)
+                    {
+                        <option value="@y" selected="@(y == Model.Year)">@y</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Miesiąc</label>
+                <select name="month" class="form-control">
+                    @for (int m = 1; m <= 12; m++)
+                    {
+                        var monthName = new DateTime(2000, m, 1).ToString("MMMM", new System.Globalization.CultureInfo("pl-PL"));
+                        <option value="@m" selected="@(m == Model.Month)">@monthName</option>
+                    }
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Pokaż raport</button>
+        </form>
+    </div>
+
+    <!-- Podsumowanie -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div class="card" style="text-align: center;">
+            <div style="font-size: 2.5rem; font-weight: 700; color: var(--accent); margin-bottom: 0.5rem;">@Model.TotalHours.ToString("0.0")</div>
+            <div style="color: var(--text-secondary); font-size: 0.875rem;">Całkowite godziny</div>
+        </div>
+        <div class="card" style="text-align: center;">
+            <div style="font-size: 2.5rem; font-weight: 700; color: var(--success); margin-bottom: 0.5rem;">@Model.TotalEmployees</div>
+            <div style="color: var(--text-secondary); font-size: 0.875rem;">Aktywnych pracowników</div>
+        </div>
+        <div class="card" style="text-align: center;">
+            <div style="font-size: 2.5rem; font-weight: 700; color: var(--warning); margin-bottom: 0.5rem;">@Model.TotalProjects</div>
+            <div style="color: var(--text-secondary); font-size: 0.875rem;">Aktywnych projektów</div>
+        </div>
+    </div>
+
+    <!-- Godziny po projektach -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="font-size: 1.125rem; margin-bottom: 1rem;">Godziny po projektach</h3>
+        @if (Model.ProjectHours.Any())
         {
-            <tr>
-                <td>@entry.EntryDate.ToString("yyyy-MM-dd")</td>
-                <td>@(entry.Employee?.User?.FirstName + " " + entry.Employee?.User?.LastName)</td>
-                <td>@(entry.Project?.Name ?? "-")</td>
-                <td>@entry.TotalHours.ToString("F2")</td>
-                <td>@entry.Employee?.HourlyRate.ToString("C2")</td>
-                <td>@((entry.Employee?.HourlyRate ?? 0) * entry.TotalHours).ToString("C2")</td>
-            </tr>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Projekt</th>
+                        <th style="text-align: center;">Liczba wpisów</th>
+                        <th style="text-align: right;">Godziny</th>
+                        <th style="text-align: right;">Budżet</th>
+                        <th style="text-align: right;">Wykorzystanie</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var project in Model.ProjectHours)
+                    {
+                        var rowStyle = project.IsOverBudget ? "border-left: 3px solid var(--danger); background: rgba(239, 68, 68, 0.05);" : "";
+                        <tr style="@rowStyle">
+                            <td>
+                                <strong>@project.ProjectName</strong>
+                                @if (project.IsOverBudget)
+                                {
+                                    <span style="color: var(--danger); font-size: 0.875rem; margin-left: 0.5rem;">⚠️ Przekroczono budżet</span>
+                                }
+                            </td>
+                            <td style="text-align: center;">@project.EntryCount</td>
+                            <td style="text-align: right; font-weight: 600;">@project.TotalHours.ToString("0.0")h</td>
+                            <td style="text-align: right; color: var(--text-secondary);">
+                                @if (project.HoursBudget.HasValue)
+                                {
+                                    <span>@project.HoursBudget.Value.ToString("0.0")h</span>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-tertiary);">-</span>
+                                }
+                            </td>
+                            <td style="text-align: right;">
+                                @if (project.BudgetUsagePercent.HasValue)
+                                {
+                                    var color = project.IsOverBudget ? "var(--danger)" : (project.BudgetUsagePercent > 80 ? "var(--warning)" : "var(--success)");
+                                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem;">
+                                        <div style="flex: 0 0 100px; height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden;">
+                                            <div style="width: @Math.Min(project.BudgetUsagePercent.Value, 100).ToString("0.0")%; height: 100%; background: @color;"></div>
+                                        </div>
+                                        <span style="font-weight: 600; color: @color;">@project.BudgetUsagePercent.Value.ToString("0.0")%</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--text-tertiary);">-</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         }
-        </tbody>
-    </table>
+        else
+        {
+            <p style="color: var(--text-tertiary); text-align: center; padding: 2rem;">Brak wpisów czasu w tym miesiącu.</p>
+        }
+    </div>
+
+    <!-- Godziny po pracownikach -->
+    <div class="card">
+        <h3 style="font-size: 1.125rem; margin-bottom: 1rem;">Godziny po pracownikach</h3>
+        @if (Model.EmployeeHours.Any())
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Pracownik</th>
+                        <th style="text-align: center;">Liczba wpisów</th>
+                        <th style="text-align: right;">Godziny</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var employee in Model.EmployeeHours)
+                    {
+                        <tr>
+                            <td><strong>@employee.EmployeeName</strong></td>
+                            <td style="text-align: center;">@employee.EntryCount</td>
+                            <td style="text-align: right; font-weight: 600; color: var(--accent);">@employee.TotalHours.ToString("0.0")h</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p style="color: var(--text-tertiary); text-align: center; padding: 2rem;">Brak wpisów czasu w tym miesiącu.</p>
+        }
+    </div>
 </div>
