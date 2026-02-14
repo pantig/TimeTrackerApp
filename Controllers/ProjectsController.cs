@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
@@ -28,7 +29,7 @@ namespace TimeTrackerApp.Controllers
                 .Include(p => p.TimeEntries)
                 .ToListAsync();
             
-            projects = projects.OrderBy(p => p.Name).ToList();
+            projects = System.Linq.Enumerable.OrderBy(projects, p => p.Name).ToList();
 
             return View(projects);
         }
@@ -40,7 +41,9 @@ namespace TimeTrackerApp.Controllers
                 .Where(e => e.IsActive)
                 .ToList();
             
-            employees = employees.OrderBy(e => e.User.LastName).ThenBy(e => e.User.FirstName).ToList();
+            employees = System.Linq.Enumerable.OrderBy(employees, e => e.User.LastName)
+                .ThenBy(e => e.User.FirstName)
+                .ToList();
 
             ViewBag.Employees = employees;
             return View();
@@ -79,7 +82,9 @@ namespace TimeTrackerApp.Controllers
                 .Where(e => e.IsActive)
                 .ToListAsync();
             
-            employeesList = employeesList.OrderBy(e => e.User.LastName).ThenBy(e => e.User.FirstName).ToList();
+            employeesList = System.Linq.Enumerable.OrderBy(employeesList, e => e.User.LastName)
+                .ThenBy(e => e.User.FirstName)
+                .ToList();
             ViewBag.Employees = employeesList;
             return View(model);
         }
@@ -98,7 +103,9 @@ namespace TimeTrackerApp.Controllers
                 .Where(e => e.IsActive)
                 .ToListAsync();
             
-            employees = employees.OrderBy(e => e.User.LastName).ThenBy(e => e.User.FirstName).ToList();
+            employees = System.Linq.Enumerable.OrderBy(employees, e => e.User.LastName)
+                .ThenBy(e => e.User.FirstName)
+                .ToList();
 
             ViewBag.Employees = employees;
             return View(project);
@@ -150,7 +157,9 @@ namespace TimeTrackerApp.Controllers
                 .Where(e => e.IsActive)
                 .ToListAsync();
             
-            employeesList = employeesList.OrderBy(e => e.User.LastName).ThenBy(e => e.User.FirstName).ToList();
+            employeesList = System.Linq.Enumerable.OrderBy(employeesList, e => e.User.LastName)
+                .ThenBy(e => e.User.FirstName)
+                .ToList();
             ViewBag.Employees = employeesList;
             return View(model);
         }

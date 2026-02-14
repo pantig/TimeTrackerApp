@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
@@ -29,7 +30,9 @@ namespace TimeTrackerApp.Controllers
                 .Where(e => e.IsActive)
                 .ToListAsync();
             
-            employees = employees.OrderBy(e => e.User.LastName).ThenBy(e => e.User.FirstName).ToList();
+            employees = System.Linq.Enumerable.OrderBy(employees, e => e.User.LastName)
+                .ThenBy(e => e.User.FirstName)
+                .ToList();
 
             return View(employees);
         }
@@ -214,7 +217,7 @@ namespace TimeTrackerApp.Controllers
         public int Id { get; set; }
 
         [Required(ErrorMessage = "Email jest wymagany")]
-        [EmailAddress(ErrorMessage = "Nieправидłowy format email")]
+        [EmailAddress(ErrorMessage = "Nieprawidłowy format email")]
         public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Imię jest wymagane")]
