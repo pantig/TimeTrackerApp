@@ -14,11 +14,13 @@ namespace TimeTrackerApp.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ITimeEntryService _timeEntryService;
+        private readonly ExcelExportService _excelExportService;
 
-        public ReportsController(ApplicationDbContext context, ITimeEntryService timeEntryService)
+        public ReportsController(ApplicationDbContext context, ITimeEntryService timeEntryService, ExcelExportService excelExportService)
         {
             _context = context;
             _timeEntryService = timeEntryService;
+            _excelExportService = excelExportService;
         }
 
         // Raport zbiorczy organizacji
@@ -187,6 +189,62 @@ namespace TimeTrackerApp.Controllers
             };
 
             return View(viewModel);
+        }
+
+        // Export Excel
+        public async Task<IActionResult> ExportMonthlyExcel(int employeeId, int year, int month)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var user = await _context.Users.FindAsync(userId);
+
+            // Sprawdź uprawnienia
+            var employee = await _context.Employees
+                .Include(e => e.User)
+                .FirstOrDefaultAsync(e => e.Id == employeeId);
+
+            if (employee == null)
+            {
+                return NotFound();
+            }
+
+            // Tylko właściciel lub Admin/Manager
+            if (user.Role == UserRole.Employee && employee.UserId != userId)
+            {
+                return Forbid();
+            }
+
+            var fromDate = new DateTime(year, month, 1);
+            var toDate = fromDate.AddMonths(1).AddDays(-1);
+
+            // Pobierz wpisy czasu
+            var timeEntries = await _context.TimeEntries
+                .Include(t => t.Project)
+                .Include(t => t.CreatedByUser)
+                .Where(t => t.EmployeeId == employeeId && t.EntryDate >= fromDate && t.EntryDate <= toDate)
+                .OrderBy(t => t.EntryDate)
+                .ThenBy(t => t.StartTime)
+                .ToListAsync();
+
+            // Pobierz day markers
+            var dayMarkers = await _context.DayMarkers
+                .Where(d => d.EmployeeId == employeeId && d.Date >= fromDate && d.Date <= toDate)
+                .ToListAsync();
+
+            var dayMarkerDict = new Dictionary<DateTime, DayMarker?>();
+            var daysInMonth = DateTime.DaysInMonth(year, month);
+            for (int day = 1; day <= daysInMonth; day++)
+            {
+                var date = new DateTime(year, month, day);
+                dayMarkerDict[date] = dayMarkers.FirstOrDefault(d => d.Date.Date == date);
+            }
+
+            var employeeName = $"{employee.User.FirstName} {employee.User.LastName}";
+            var excelBytes = _excelExportService.GenerateMonthlyReport(employeeName, year, month, timeEntries, dayMarkerDict);
+
+            var monthName = new DateTime(year, month, 1).ToString("MMMM yyyy", new System.Globalization.CultureInfo("pl-PL"));
+            var fileName = $"{employee.User.FirstName}-{employee.User.LastName}-{monthName}.xlsx";
+
+            return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
     }
 }
