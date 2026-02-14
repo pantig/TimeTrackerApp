@@ -10,7 +10,13 @@
             <h2 style="margin: 0;">Raport miesięczny</h2>
             <p class="hint" style="margin-top: 0.5rem;">{Model.MonthName} - @Model.EmployeeName</p>
         </div>
-        <a asp-action="Summary" class="btn btn-secondary">Powrót do raportów</a>
+        <div style="display: flex; gap: 0.5rem;">
+            <a href="@Url.Action("ExportMonthlyExcel", new { employeeId = Model.EmployeeId, year = Model.Year, month = Model.Month })" 
+               class="btn btn-primary">
+                💾 Export Excel
+            </a>
+            <a asp-action="Summary" class="btn btn-secondary">Powrót do raportów</a>
+        </div>
     </div>
 
     <!-- Filtry -->
