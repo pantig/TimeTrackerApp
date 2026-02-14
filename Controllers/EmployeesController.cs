@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Linq;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using TimeTrackerApp.Data;
 using TimeTrackerApp.Models;
 using TimeTrackerApp.Models.ViewModels;
@@ -24,9 +27,9 @@ namespace TimeTrackerApp.Controllers
             var employees = await _context.Employees
                 .Include(e => e.User)
                 .Where(e => e.IsActive)
-                .OrderBy(e => e.User.LastName)
-                .ThenBy(e => e.User.FirstName)
                 .ToListAsync();
+            
+            employees = employees.OrderBy(e => e.User.LastName).ThenBy(e => e.User.FirstName).ToList();
 
             return View(employees);
         }
@@ -120,7 +123,7 @@ namespace TimeTrackerApp.Controllers
             _context.Employees.Add(employee);
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = $"Pracownik {user.FirstName} {user.LastName} został pomyślnie dodany.";
+            TempData["SuccessMessage"] = string.Format("Pracownik {0} {1} został pomyślnie dodany.", user.FirstName, user.LastName);
             return RedirectToAction(nameof(Index));
         }
 
@@ -211,7 +214,7 @@ namespace TimeTrackerApp.Controllers
         public int Id { get; set; }
 
         [Required(ErrorMessage = "Email jest wymagany")]
-        [EmailAddress(ErrorMessage = "Nieprawidłowy format email")]
+        [EmailAddress(ErrorMessage = "Nieправидłowy format email")]
         public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Imię jest wymagane")]
