@@ -1,7 +1,10 @@
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
+using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
+using System.Linq;
 using TimeTrackerApp.Models;
 
 namespace TimeTrackerApp.Services
@@ -24,11 +27,11 @@ namespace TimeTrackerApp.Services
             var monthName = new DateTime(year, month, 1).ToString("MMMM", culture);
 
             // Nagłówek
-            worksheet.Cells["D1"].Value = $"{employeeName}";
+            worksheet.Cells["D1"].Value = employeeName;
             worksheet.Cells["D1"].Style.Font.Bold = true;
             worksheet.Cells["D1"].Style.Font.Size = 14;
 
-            worksheet.Cells["D2"].Value = $"MIESIĘCZNY RAPORT PRACY - {monthName}";
+            worksheet.Cells["D2"].Value = string.Format("MIESIĘCZNY RAPORT PRACY - {0}", monthName);
             worksheet.Cells["D2"].Style.Font.Bold = true;
             worksheet.Cells["D2"].Style.Font.Size = 12;
 
@@ -46,8 +49,9 @@ namespace TimeTrackerApp.Services
             // Grupowanie wpisów po dniach
             var entriesByDay = entries
                 .GroupBy(e => e.EntryDate.Date)
-                .OrderBy(g => g.Key)
                 .ToList();
+            
+            entriesByDay = entriesByDay.OrderBy(g => g.Key).ToList();
 
             int currentRow = 10; // Zaczynamy od wiersza 10
             var daysInMonth = DateTime.DaysInMonth(year, month);
@@ -62,7 +66,8 @@ namespace TimeTrackerApp.Services
                 if (dayGroup != null && dayGroup.Any())
                 {
                     // Dzień z wpisami
-                    var dayEntries = dayGroup.OrderBy(e => e.StartTime).ToList();
+                    var dayEntries = dayGroup.ToList();
+                    dayEntries = dayEntries.OrderBy(e => e.StartTime).ToList();
                     var totalHours = dayEntries.Sum(e => e.TotalHours);
 
                     for (int i = 0; i < dayEntries.Count; i++)
@@ -78,7 +83,7 @@ namespace TimeTrackerApp.Services
                         }
 
                         worksheet.Cells[currentRow, 4].Value = entry.Description ?? "";
-                        worksheet.Cells[currentRow, 5].Value = $"{entry.StartTime:hh\\:mm} - {entry.EndTime:hh\\:mm}";
+                        worksheet.Cells[currentRow, 5].Value = string.Format("{0:hh\\:mm} - {1:hh\\:mm}", entry.StartTime, entry.EndTime);
                         worksheet.Cells[currentRow, 7].Value = entry.Project?.Name ?? "(brak projektu)";
                         worksheet.Cells[currentRow, 8].Value = entry.Description ?? "";
                         worksheet.Cells[currentRow, 9].Value = (double)entry.TotalHours;
@@ -151,8 +156,9 @@ namespace TimeTrackerApp.Services
             var projectStats = entries
                 .GroupBy(e => e.Project?.Name ?? "(brak projektu)")
                 .Select(g => new { Project = g.Key, Hours = g.Sum(e => e.TotalHours) })
-                .OrderByDescending(p => p.Hours)
                 .ToList();
+            
+            projectStats = projectStats.OrderByDescending(p => p.Hours).ToList();
 
             currentRow = currentRow - markerStats.Count; // Wróć do początku statystyk
             foreach (var stat in projectStats)
