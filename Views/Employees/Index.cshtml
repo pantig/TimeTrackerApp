@@ -1,0 +1,37 @@
+@model List<TimeTrackerApp.Models.Employee>
+
+@{
+    ViewData["Title"] = "Pracownicy";
+}
+
+<div class="page-header">
+    <h1>Lista Pracowników</h1>
+</div>
+
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Nr Pracownika</th>
+            <th>Imię i Nazwisko</th>
+            <th>Stanowisko</th>
+            <th>Dział</th>
+            <th>Stawka</th>
+            <th>Akcje</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var emp in Model)
+        {
+            <tr>
+                <td>@emp.EmployeeNumber</td>
+                <td>@emp.User?.FirstName @emp.User?.LastName</td>
+                <td>@emp.Position</td>
+                <td>@emp.Department</td>
+                <td>@emp.HourlyRate.ToString("C2")</td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@emp.Id" class="btn-sm">Szczegóły</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

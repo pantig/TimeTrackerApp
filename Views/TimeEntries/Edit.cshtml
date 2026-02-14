@@ -1,0 +1,60 @@
+@using TimeTrackerApp.Models.ViewModels
+@model TimeEntryViewModel
+
+@{
+    ViewData["Title"] = "Edytuj wpis czasu";
+}
+
+<div class="form-container">
+    <h1>Edytuj wpis czasu</h1>
+
+    <form asp-action="Edit" method="post" class="form">
+        <div asp-validation-summary="All" class="error-summary"></div>
+        <input type="hidden" asp-for="Id" />
+
+        <div class="form-group">
+            <label asp-for="EmployeeId">Pracownik</label>
+            <select asp-for="EmployeeId" class="form-control" asp-items="@(new SelectList(Model.Employees, "Id", "EmployeeNumber"))"></select>
+            <span asp-validation-for="EmployeeId" class="error"></span>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="ProjectId">Projekt</label>
+            <select asp-for="ProjectId" class="form-control" asp-items="@(new SelectList(Model.Projects, "Id", "Name"))">
+                <option value="">-- Brak projektu --</option>
+            </select>
+            <span asp-validation-for="ProjectId" class="error"></span>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="EntryDate">Data</label>
+            <input asp-for="EntryDate" class="form-control" type="date" />
+            <span asp-validation-for="EntryDate" class="error"></span>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="StartTime">Od</label>
+                <input asp-for="StartTime" class="form-control" type="time" />
+                <span asp-validation-for="StartTime" class="error"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="EndTime">Do</label>
+                <input asp-for="EndTime" class="form-control" type="time" />
+                <span asp-validation-for="EndTime" class="error"></span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="Description">Opis</label>
+            <textarea asp-for="Description" class="form-control" rows="4" placeholder="Opis pracy..."></textarea>
+            <span asp-validation-for="Description" class="error"></span>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Zapisz</button>
+            <a asp-action="Index" class="btn btn-secondary">Anuluj</a>
+        </div>
+    </form>
+</div>

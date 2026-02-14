@@ -1,0 +1,31 @@
+@model TimeTrackerApp.Models.Employee
+
+@{
+    ViewData["Title"] = "Szczegóły Pracownika";
+}
+
+<div class="form-container">
+    <h1>@Model.User?.FirstName @Model.User?.LastName</h1>
+    <p>Nr pracownika: @Model.EmployeeNumber</p>
+
+    <div class="details-section">
+        <h3>Informacje o zatrudnieniu</h3>
+        <dl class="row">
+            <dt class="col-sm-4">Stanowisko</dt>
+            <dd class="col-sm-8">@Model.Position</dd>
+
+            <dt class="col-sm-4">Dział</dt>
+            <dd class="col-sm-8">@Model.Department</dd>
+
+            <dt class="col-sm-4">Stawka godzinowa</dt>
+            <dd class="col-sm-8">@Model.HourlyRate.ToString("C2")</dd>
+
+            <dt class="col-sm-4">Standardowy dzień</dt>
+            <dd class="col-sm-8">@Model.StandardHoursPerDay h</dd>
+        </dl>
+    </div>
+
+    <div class="form-actions" style="margin-top: 20px;">
+        <a asp-action="Index" class="btn btn-secondary">Powrót do listy</a>
+    </div>
+</div>

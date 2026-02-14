@@ -1,0 +1,48 @@
+@model List<TimeTrackerApp.Models.TimeEntry>
+
+@{
+    ViewData["Title"] = "Zatwierdzanie Wpisów";
+}
+
+<div class="page-header">
+    <h1>Wpisy do zatwierdzenia</h1>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">Brak wpisów oczekujących na zatwierdzenie.</div>
+}
+else
+{
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Pracownik</th>
+                <th>Data</th>
+                <th>Od</th>
+                <th>Do</th>
+                <th>Godziny</th>
+                <th>Projekt</th>
+                <th>Akcja</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in Model)
+            {
+                <tr>
+                    <td>@entry.Employee?.User?.FirstName @entry.Employee?.User?.LastName</td>
+                    <td>@entry.EntryDate.ToString("yyyy-MM-dd")</td>
+                    <td>@entry.StartTime.ToString(@"hh\:mm")</td>
+                    <td>@entry.EndTime.ToString(@"hh\:mm")</td>
+                    <td>@entry.TotalHours.ToString("F2")</td>
+                    <td>@(entry.Project?.Name ?? "-")</td>
+                    <td>
+                        <form asp-action="ApproveEntry" asp-route-id="@entry.Id" method="post">
+                            <button type="submit" class="btn-sm">Zatwierdź</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
