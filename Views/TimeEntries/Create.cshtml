@@ -1,0 +1,56 @@
+@model TimeEntryViewModel
+
+@{
+    ViewData["Title"] = "Nowy wpis czasu";
+}
+
+<div class="form-container">
+    <h1>Nowy wpis czasu</h1>
+
+    <form method="post" class="form">
+        <div asp-validation-summary="ModelOnly" class="error-summary"></div>
+
+        <div class="form-group">
+            <label asp-for="EmployeeId"></label>
+            <select asp-for="EmployeeId" class="form-control" asp-items="@(new SelectList(Model.Employees, "Id", "User.FirstName"))"></select>
+            <span asp-validation-for="EmployeeId" class="error"></span>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="ProjectId"></label>
+            <select asp-for="ProjectId" class="form-control" asp-items="@(new SelectList(Model.Projects, "Id", "Name"))">
+                <option value="">-- Brak projektu --</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="EntryDate"></label>
+            <input asp-for="EntryDate" class="form-control" type="date" />
+            <span asp-validation-for="EntryDate" class="error"></span>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="StartTime"></label>
+                <input asp-for="StartTime" class="form-control" type="time" />
+                <span asp-validation-for="StartTime" class="error"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="EndTime"></label>
+                <input asp-for="EndTime" class="form-control" type="time" />
+                <span asp-validation-for="EndTime" class="error"></span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="Description"></label>
+            <textarea asp-for="Description" class="form-control" rows="4" placeholder="Opis pracy..."></textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Zapisz</button>
+            <a href="/TimeEntries" class="btn btn-secondary">Anuluj</a>
+        </div>
+    </form>
+</div>

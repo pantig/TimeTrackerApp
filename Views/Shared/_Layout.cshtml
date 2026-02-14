@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - System Rejestracji Czasu Pracy</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+<nav class="navbar">
+    <div class="container">
+        <a href="/" class="navbar-brand">⏱️ TimeTracker</a>
+        <div class="navbar-menu">
+            @if (User.Identity.IsAuthenticated)
+            {
+                <a href="/TimeEntries">Wpisy</a>
+                <a href="/Reports/Summary">Raporty</a>
+                @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                {
+                    <a href="/Employees">Pracownicy</a>
+                    <a href="/Reports/Approval">Zatwierdzenia</a>
+                }
+                <span class="username">@User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value</span>
+                <form method="post" action="/Account/Logout" style="display:inline;">
+                    <button type="submit" class="btn-logout">Wyloguj</button>
+                </form>
+            }
+            else
+            {
+                <a href="/Account/Login">Logowanie</a>
+                <a href="/Account/Register">Rejestracja</a>
+            }
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    @RenderBody()
+</div>
+
+<footer class="footer">
+    <p>&copy; 2026 System Rejestracji Czasu Pracy - Projekt Zaliczeniowy</p>
+</footer>
+</body>
+</html>

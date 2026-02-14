@@ -1,0 +1,54 @@
+@model ReportViewModel
+
+@{
+    ViewData["Title"] = "Podsumowanie";
+}
+
+<div class="report-container">
+    <h1>Raport podsumowujący</h1>
+
+    <div class="report-filters">
+        <p>Okres: <strong>@Model.FromDate.ToString("yyyy-MM-dd")</strong> do <strong>@Model.ToDate.ToString("yyyy-MM-dd")</strong></p>
+    </div>
+
+    <div class="report-summary">
+        <div class="summary-card">
+            <h3>Razem godzin</h3>
+            <p class="summary-value">@Model.TotalHours.ToString("F2")</p>
+        </div>
+        <div class="summary-card">
+            <h3>Razem zarobki</h3>
+            <p class="summary-value">@Model.TotalEarnings.ToString("C2")</p>
+        </div>
+        <div class="summary-card">
+            <h3>Ilość wpisów</h3>
+            <p class="summary-value">@Model.TimeEntries.Count</p>
+        </div>
+    </div>
+
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>Data</th>
+            <th>Pracownik</th>
+            <th>Projekt</th>
+            <th>Godziny</th>
+            <th>Stawka/h</th>
+            <th>Suma</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var entry in Model.TimeEntries.OrderByDescending(e => e.EntryDate))
+        {
+            <tr>
+                <td>@entry.EntryDate.ToString("yyyy-MM-dd")</td>
+                <td>@entry.Employee?.User.FirstName @entry.Employee?.User.LastName</td>
+                <td>@entry.Project?.Name ?? "-"</td>
+                <td>@entry.TotalHours.ToString("F2")</td>
+                <td>@entry.Employee?.HourlyRate.ToString("C2")</td>
+                <td>@(entry.Employee != null ? (entry.Employee.HourlyRate * entry.TotalHours).ToString("C2") : "-")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

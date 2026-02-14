@@ -1,0 +1,47 @@
+@model List<TimeEntry>
+
+@{
+    ViewData["Title"] = "Moje Wpisy Czasu";
+}
+
+<div class="page-header">
+    <h1>Moje Wpisy Czasu</h1>
+    <a href="/TimeEntries/Create" class="btn btn-primary">+ Nowy wpis</a>
+</div>
+
+<table class="data-table">
+    <thead>
+    <tr>
+        <th>Data</th>
+        <th>Od</th>
+        <th>Do</th>
+        <th>Godziny</th>
+        <th>Projekt</th>
+        <th>Opis</th>
+        <th>Status</th>
+        <th>Akcje</th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var entry in Model.OrderByDescending(e => e.EntryDate))
+    {
+        <tr>
+            <td>@entry.EntryDate.ToString("yyyy-MM-dd")</td>
+            <td>@entry.StartTime.ToString("HH:mm")</td>
+            <td>@entry.EndTime.ToString("HH:mm")</td>
+            <td>@entry.TotalHours.ToString("F2")</td>
+            <td>@entry.Project?.Name ?? "-"</td>
+            <td>@entry.Description</td>
+            <td>
+                <span class="badge @(entry.IsApproved ? "badge-success" : "badge-warning")">
+                    @(entry.IsApproved ? "Zatwierdzone" : "Oczekujące")
+                </span>
+            </td>
+            <td>
+                <a href="/TimeEntries/Edit/@entry.Id" class="btn-sm">Edytuj</a>
+                <a href="/TimeEntries/Delete/@entry.Id" class="btn-sm btn-danger">Usuń</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
