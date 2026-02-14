@@ -17,10 +17,10 @@
                 <a asp-controller="Calendar" asp-action="Index">Kalendarz</a>
                 <a asp-controller="TimeEntries" asp-action="Index">Wpisy</a>
                 <a asp-controller="Reports" asp-action="Summary">Raporty</a>
+                <a asp-controller="Reports" asp-action="Monthly">Raport miesięczny</a>
                 @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
                 {
                     <a asp-controller="Employees" asp-action="Index">Pracownicy</a>
-                    <a asp-controller="Reports" asp-action="Approval">Zatwierdzenia</a>
                 }
                 <span class="username">👤 @User.Identity.Name</span>
                 <form method="post" asp-controller="Account" asp-action="Logout" style="display:inline;">
