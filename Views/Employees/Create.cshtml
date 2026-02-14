@@ -2,9 +2,7 @@
 
 @{
     ViewData["Title"] = "Dodaj pracownika";
-    var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier).Value);
-    var currentUser = await Context.Users.FindAsync(userId);
-    var isAdmin = currentUser.Role == TimeTrackerApp.Models.UserRole.Admin;
+    var isAdmin = User.IsInRole("Admin");
 }
 
 <div class="card" style="max-width: 800px; margin: 2rem auto;">
