@@ -10,5 +10,7 @@ namespace TimeTrackerApp.Services
         Task<decimal> GetTotalEarningsAsync(int employeeId, DateTime from, DateTime to);
         Task<List<TimeEntry>> GetUnapprovedEntriesAsync();
         Task ApproveTimeEntryAsync(int entryId);
+
+        Task UpsertDailyHoursAsync(int employeeId, DateTime date, decimal hours, int? projectId, string? description);
     }
 }

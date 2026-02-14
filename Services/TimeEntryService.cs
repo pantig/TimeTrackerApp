@@ -69,5 +69,69 @@ namespace TimeTrackerApp.Services
                 await _context.SaveChangesAsync();
             }
         }
+
+        public async Task UpsertDailyHoursAsync(int employeeId, DateTime date, decimal hours, int? projectId, string? description)
+        {
+            // If hours == 0, remove any existing entries for that day (only if not approved)
+            var dayStart = date.Date;
+            var dayEnd = date.Date.AddDays(1).AddTicks(-1);
+
+            var existing = await _context.TimeEntries
+                .Where(t => t.EmployeeId == employeeId && t.EntryDate >= dayStart && t.EntryDate <= dayEnd)
+                .OrderBy(t => t.Id)
+                .ToListAsync();
+
+            if (existing.Any(e => e.IsApproved))
+            {
+                // Do not modify approved entries
+                return;
+            }
+
+            if (hours <= 0)
+            {
+                if (existing.Count > 0)
+                {
+                    _context.TimeEntries.RemoveRange(existing);
+                    await _context.SaveChangesAsync();
+                }
+                return;
+            }
+
+            // Represent daily hours as a single entry: 09:00 -> 09:00 + hours
+            var start = new TimeSpan(9, 0, 0);
+            var end = start.Add(TimeSpan.FromHours((double)hours));
+
+            var entry = existing.FirstOrDefault();
+            if (entry == null)
+            {
+                entry = new TimeEntry
+                {
+                    EmployeeId = employeeId,
+                    EntryDate = date.Date,
+                    StartTime = start,
+                    EndTime = end,
+                    ProjectId = projectId,
+                    Description = description,
+                    IsApproved = false
+                };
+                _context.TimeEntries.Add(entry);
+            }
+            else
+            {
+                entry.EntryDate = date.Date;
+                entry.StartTime = start;
+                entry.EndTime = end;
+                entry.ProjectId = projectId;
+                entry.Description = description;
+            }
+
+            // Remove duplicates for the day (if any)
+            if (existing.Count > 1)
+            {
+                _context.TimeEntries.RemoveRange(existing.Skip(1));
+            }
+
+            await _context.SaveChangesAsync();
+        }
     }
 }
