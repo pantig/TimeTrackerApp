@@ -1,31 +1,60 @@
 @model TimeTrackerApp.Models.Employee
 
 @{
-    ViewData["Title"] = "Szczegóły Pracownika";
+    ViewData["Title"] = "Szczegóły pracownika";
 }
 
-<div class="form-container">
-    <h1>@Model.User?.FirstName @Model.User?.LastName</h1>
-    <p>Nr pracownika: @Model.EmployeeNumber</p>
+<h2>Szczegóły pracownika</h2>
 
-    <div class="details-section">
-        <h3>Informacje o zatrudnieniu</h3>
-        <dl class="row">
-            <dt class="col-sm-4">Stanowisko</dt>
-            <dd class="col-sm-8">@Model.Position</dd>
+<div class="card">
+    <dl>
+        <dt>Imię i nazwisko</dt>
+        <dd><strong>@Model.User.FirstName @Model.User.LastName</strong></dd>
 
-            <dt class="col-sm-4">Dział</dt>
-            <dd class="col-sm-8">@Model.Department</dd>
+        <dt>Email</dt>
+        <dd>@Model.User.Email</dd>
 
-            <dt class="col-sm-4">Stawka godzinowa</dt>
-            <dd class="col-sm-8">@Model.HourlyRate.ToString("C2")</dd>
+        <dt>Stanowisko</dt>
+        <dd>@Model.Position</dd>
 
-            <dt class="col-sm-4">Standardowy dzień</dt>
-            <dd class="col-sm-8">@Model.StandardHoursPerDay h</dd>
-        </dl>
-    </div>
+        <dt>Departament</dt>
+        <dd>@Model.Department</dd>
 
-    <div class="form-actions" style="margin-top: 20px;">
+        <dt>Data zatrudnienia</dt>
+        <dd>@Model.HireDate.ToString("yyyy-MM-dd")</dd>
+
+        <dt>Status</dt>
+        <dd>
+            @if (Model.IsActive)
+            {
+                <span class="badge badge-success">Aktywny</span>
+            }
+            else
+            {
+                <span class="badge badge-secondary">Nieaktywny</span>
+            }
+        </dd>
+    </dl>
+
+    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Edytuj</a>
         <a asp-action="Index" class="btn btn-secondary">Powrót do listy</a>
     </div>
+</div>
+
+<div class="card" style="margin-top: 2rem;">
+    <h3 style="margin-bottom: 1rem;">Projekty</h3>
+    @if (Model.Projects.Any())
+    {
+        <ul style="margin: 0; padding-left: 1.5rem;">
+            @foreach (var project in Model.Projects)
+            {
+                <li style="margin-bottom: 0.5rem;">@project.Name</li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p style="color: var(--text-tertiary);">Brak przypisanych projektów.</p>
+    }
 </div>
