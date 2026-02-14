@@ -1,4 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using TimeTrackerApp.Data;
 using TimeTrackerApp.Models;
 
@@ -67,14 +71,18 @@ namespace TimeTrackerApp.Services
 
             var existing = await _context.TimeEntries
                 .Where(t => t.EmployeeId == employeeId && t.EntryDate >= dayStart && t.EntryDate <= dayEnd)
-                .OrderBy(t => t.Id)
                 .ToListAsync();
+            
+            existing = existing.OrderBy(t => t.Id).ToList();
 
             if (hours <= 0)
             {
                 if (existing.Count > 0)
                 {
-                    _context.TimeEntries.RemoveRange(existing);
+                    foreach (var item in existing)
+                    {
+                        _context.TimeEntries.Remove(item);
+                    }
                     await _context.SaveChangesAsync();
                 }
                 return;
@@ -111,7 +119,11 @@ namespace TimeTrackerApp.Services
             // Remove duplicates for the day (if any)
             if (existing.Count > 1)
             {
-                _context.TimeEntries.RemoveRange(existing.Skip(1));
+                var duplicates = existing.Skip(1).ToList();
+                foreach (var dup in duplicates)
+                {
+                    _context.TimeEntries.Remove(dup);
+                }
             }
 
             await _context.SaveChangesAsync();
