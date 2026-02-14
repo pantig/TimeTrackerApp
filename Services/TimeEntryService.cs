@@ -43,36 +43,25 @@ namespace TimeTrackerApp.Services
 
         public async Task<decimal> GetTotalEarningsAsync(int employeeId, DateTime from, DateTime to)
         {
-            return await _context.TimeEntries
-                .Where(t => t.EmployeeId == employeeId && t.EntryDate >= from && t.EntryDate <= to)
-                .Include(t => t.Employee)
-                .SumAsync(t => t.Employee.HourlyRate * (decimal)(t.EndTime - t.StartTime).TotalHours);
+            // Feature removed - no salary calculations
+            return 0;
         }
 
         public async Task<List<TimeEntry>> GetUnapprovedEntriesAsync()
         {
-            return await _context.TimeEntries
-                .Where(t => !t.IsApproved)
-                .Include(t => t.Employee)
-                    .ThenInclude(e => e.User)
-                .Include(t => t.Project)
-                .OrderBy(t => t.EntryDate)
-                .ToListAsync();
+            // Feature removed - no approval workflow
+            return new List<TimeEntry>();
         }
 
         public async Task ApproveTimeEntryAsync(int entryId)
         {
-            var entry = await _context.TimeEntries.FindAsync(entryId);
-            if (entry != null)
-            {
-                entry.IsApproved = true;
-                await _context.SaveChangesAsync();
-            }
+            // Feature removed - no approval workflow
+            await Task.CompletedTask;
         }
 
         public async Task UpsertDailyHoursAsync(int employeeId, DateTime date, decimal hours, int? projectId, string? description)
         {
-            // If hours == 0, remove any existing entries for that day (only if not approved)
+            // If hours == 0, remove any existing entries for that day
             var dayStart = date.Date;
             var dayEnd = date.Date.AddDays(1).AddTicks(-1);
 
@@ -80,12 +69,6 @@ namespace TimeTrackerApp.Services
                 .Where(t => t.EmployeeId == employeeId && t.EntryDate >= dayStart && t.EntryDate <= dayEnd)
                 .OrderBy(t => t.Id)
                 .ToListAsync();
-
-            if (existing.Any(e => e.IsApproved))
-            {
-                // Do not modify approved entries
-                return;
-            }
 
             if (hours <= 0)
             {
@@ -112,7 +95,7 @@ namespace TimeTrackerApp.Services
                     EndTime = end,
                     ProjectId = projectId,
                     Description = description,
-                    IsApproved = false
+                    CreatedBy = employeeId
                 };
                 _context.TimeEntries.Add(entry);
             }

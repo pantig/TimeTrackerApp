@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TimeTrackerApp.Models
 {
@@ -28,26 +29,6 @@ namespace TimeTrackerApp.Models
         // Nawigacja
         public virtual ICollection<TimeEntry> TimeEntries { get; set; } = new List<TimeEntry>();
         public virtual ICollection<Employee> Employees { get; set; } = new List<Employee>();
-
-        // Właściwość obliczana - suma godzin
-        [NotMapped]
-        public decimal TotalHoursSpent
-        {
-            get
-            {
-                return TimeEntries?.Sum(te => te.TotalHours) ?? 0;
-            }
-        }
-
-        // Czy przekroczono budżet
-        [NotMapped]
-        public bool IsOverBudget
-        {
-            get
-            {
-                return HoursBudget.HasValue && TotalHoursSpent > HoursBudget.Value;
-            }
-        }
     }
 
     public enum ProjectStatus

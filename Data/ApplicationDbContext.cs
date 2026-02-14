@@ -62,10 +62,6 @@ namespace TimeTrackerApp.Data
                 .HasIndex(u => u.Email)
                 .IsUnique();
 
-            modelBuilder.Entity<Employee>()
-                .HasIndex(e => e.EmployeeNumber)
-                .IsUnique();
-
             // Wartości domyślne
             modelBuilder.Entity<User>()
                 .Property(u => u.CreatedAt)

@@ -46,9 +46,9 @@ namespace TimeTrackerApp.Data
             // Projektów
             var projects = new List<Project>
             {
-                new Project { Name = "Portal E-commerce", Description = "Budowa platformy sprzedażowej", Status = ProjectStatus.Active },
-                new Project { Name = "System CRM", Description = "Zarządzanie relacjami z klientami", Status = ProjectStatus.Active },
-                new Project { Name = "Modernizacja IT", Description = "Aktualizacja infrastruktury", Status = ProjectStatus.Planning }
+                new Project { Name = "Portal E-commerce", Description = "Budowa platformy sprzedażowej", Status = ProjectStatus.Active, HoursBudget = 160 },
+                new Project { Name = "System CRM", Description = "Zarządzanie relacjami z klientami", Status = ProjectStatus.Active, HoursBudget = 240 },
+                new Project { Name = "Modernizacja IT", Description = "Aktualizacja infrastruktury", Status = ProjectStatus.Planning, HoursBudget = 80 }
             };
 
             context.Projects.AddRange(projects);
@@ -60,20 +60,14 @@ namespace TimeTrackerApp.Data
                 new Employee
                 {
                     UserId = employeeUser.Id,
-                    EmployeeNumber = "E001",
                     Position = "Developer",
-                    Department = "IT",
-                    HourlyRate = 150,
-                    StandardHoursPerDay = 8
+                    Department = "IT"
                 },
                 new Employee
                 {
                     UserId = managerUser.Id,
-                    EmployeeNumber = "M001",
                     Position = "Project Manager",
-                    Department = "Management",
-                    HourlyRate = 200,
-                    StandardHoursPerDay = 8
+                    Department = "Management"
                 }
             };
 
@@ -92,8 +86,7 @@ namespace TimeTrackerApp.Data
                     StartTime = new TimeSpan(9, 0, 0),
                     EndTime = new TimeSpan(17, 0, 0),
                     Description = "Implementacja widoku głównego",
-                    CreatedBy = employeeUser.Id,
-                    IsApproved = false
+                    CreatedBy = employeeUser.Id
                 },
                 new TimeEntry
                 {
@@ -103,8 +96,7 @@ namespace TimeTrackerApp.Data
                     StartTime = new TimeSpan(8, 30, 0),
                     EndTime = new TimeSpan(17, 30, 0),
                     Description = "Spotkanie zespołu",
-                    CreatedBy = managerUser.Id,
-                    IsApproved = true
+                    CreatedBy = managerUser.Id
                 }
             };
 
