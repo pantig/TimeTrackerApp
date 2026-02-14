@@ -17,6 +17,7 @@
   --text-tertiary: #a3a3a3;
   --border-light: #e5e5e5;
   --border-medium: #d4d4d4;
+  --border: #e5e5e5;
   --accent: #3b82f6;
   --accent-hover: #2563eb;
   --success: #10b981;
@@ -222,6 +223,11 @@ a:hover {
   color: white;
 }
 
+.badge-secondary {
+  background: rgba(82, 82, 82, 0.1);
+  color: var(--text-secondary);
+}
+
 /* === FORMS === */
 .form-group {
   margin-bottom: var(--space-lg);
@@ -301,6 +307,96 @@ select.input {
   background: rgba(239, 68, 68, 0.1);
   color: var(--danger);
   border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.alert-warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+/* === DAY MARKER STYLES === */
+/* Background colors for marked days */
+.timegrid-day-col.day-business-trip .timegrid-day-cells {
+  background: rgba(147, 51, 234, 0.15); /* Fioletowa poświata */
+}
+
+.timegrid-day-col.day-off .timegrid-day-cells {
+  background: rgba(156, 163, 175, 0.25); /* Szara poświata */
+}
+
+.timegrid-day-col.day-sick .timegrid-day-cells {
+  background: rgba(234, 179, 8, 0.15); /* Żółta poświata */
+}
+
+.timegrid-day-col.day-vacation .timegrid-day-cells {
+  background: rgba(244, 114, 182, 0.15); /* Bladoróżowa poświata */
+}
+
+/* Day marker selector */
+.day-marker-selector {
+  position: relative;
+}
+
+.btn-day-marker {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  transition: all var(--transition);
+}
+
+.btn-day-marker:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent);
+}
+
+.day-marker-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  min-width: 180px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.day-marker-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  transition: background var(--transition);
+}
+
+.day-marker-option:hover {
+  background: var(--bg-tertiary);
+}
+
+.day-marker-option .marker-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.day-marker-option span:last-child {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--success);
 }
 
 /* === TIME GRID CALENDAR === */
@@ -447,12 +543,12 @@ select.input {
 .timegrid-day-header {
   height: 80px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   border-bottom: 2px solid var(--border-medium);
   padding: var(--space-sm);
   background: var(--bg-tertiary);
+  gap: var(--space-sm);
 }
 
 .timegrid-day-col.today .timegrid-day-header {
@@ -639,10 +735,9 @@ select.input {
 
 .timegrid-legend {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-md);
   margin-top: var(--space-lg);
-  flex-wrap: wrap;
 }
 
 .badge {
