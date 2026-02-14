@@ -573,7 +573,8 @@ select.input {
 }
 
 .entry-project {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
   opacity: 0.95;
   white-space: nowrap;
   overflow: hidden;
@@ -581,7 +582,7 @@ select.input {
 }
 
 .entry-desc {
-  font-size: 0.7rem;
+  font-size: 0.8125rem;
   opacity: 0.85;
   margin-top: 2px;
   white-space: nowrap;
