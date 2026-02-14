@@ -41,7 +41,9 @@ namespace TimeTrackerApp.Controllers
                     .Include(e => e.User)
                     .ToListAsync();
                 
-                allEmployees = allEmployees.OrderBy(e => e.User.LastName).ThenBy(e => e.User.FirstName).ToList();
+                allEmployees = System.Linq.Enumerable.OrderBy(allEmployees, e => e.User.LastName)
+                    .ThenBy(e => e.User.FirstName)
+                    .ToList();
 
                 if (employeeId.HasValue)
                 {
@@ -86,7 +88,9 @@ namespace TimeTrackerApp.Controllers
                 .ToListAsync();
 
             // Sort by StartTime in memory
-            entries = entries.OrderBy(e => e.EntryDate).ThenBy(e => e.StartTime).ToList();
+            entries = System.Linq.Enumerable.OrderBy(entries, e => e.EntryDate)
+                .ThenBy(e => e.StartTime)
+                .ToList();
 
             // Fetch day markers
             var dayMarkers = await _context.DayMarkers
@@ -103,12 +107,12 @@ namespace TimeTrackerApp.Controllers
                     .FirstOrDefaultAsync(e => e.Id == employee.Id);
                 
                 var projectsList = empWithProjects?.Projects.ToList() ?? new List<Project>();
-                projects = projectsList.OrderBy(p => p.Name).ToList();
+                projects = System.Linq.Enumerable.OrderBy(projectsList, p => p.Name).ToList();
             }
             else
             {
                 projects = await _context.Projects.ToListAsync();
-                projects = projects.OrderBy(p => p.Name).ToList();
+                projects = System.Linq.Enumerable.OrderBy(projects, p => p.Name).ToList();
             }
 
             var entriesByDay = new Dictionary<DateTime, List<TimeGridEntry>>();
@@ -132,7 +136,7 @@ namespace TimeTrackerApp.Controllers
                     })
                     .ToList();
                 
-                dayEntries = dayEntries.OrderBy(e => e.StartTime).ToList();
+                dayEntries = System.Linq.Enumerable.OrderBy(dayEntries, e => e.StartTime).ToList();
                 entriesByDay[day] = dayEntries;
 
                 var marker = dayMarkers.FirstOrDefault(d => d.Date.Date == day);
