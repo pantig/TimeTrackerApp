@@ -217,6 +217,11 @@ a:hover {
   color: white;
 }
 
+.btn-danger:hover {
+  background: #dc2626;
+  color: white;
+}
+
 /* === FORMS === */
 .form-group {
   margin-bottom: var(--space-lg);
@@ -277,6 +282,25 @@ select.input {
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
   box-shadow: var(--shadow-sm);
+}
+
+/* === ALERTS === */
+.alert {
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+}
+
+.alert-success {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.alert-danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 /* === TIME GRID CALENDAR === */
@@ -563,6 +587,13 @@ select.input {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.entry-created-by {
+  font-size: 0.65rem;
+  opacity: 0.75;
+  margin-top: 2px;
+  font-style: italic;
 }
 
 .entry-edit,
