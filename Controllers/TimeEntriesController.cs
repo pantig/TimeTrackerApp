@@ -31,6 +31,7 @@ namespace TimeTrackerApp.Controllers
                 .Include(t => t.Employee)
                     .ThenInclude(e => e.User)
                 .Include(t => t.Project)
+                .Include(t => t.CreatedByUser)
                 .AsQueryable();
 
             if (user.Role == UserRole.Employee)
@@ -95,7 +96,8 @@ namespace TimeTrackerApp.Controllers
                 StartTime = model.StartTime,
                 EndTime = model.EndTime,
                 Description = model.Description,
-                CreatedBy = userId
+                CreatedBy = userId,
+                CreatedAt = DateTime.UtcNow
             };
 
             // Sprawdzenie uprawnień: Pracownik może dodawać tylko dla siebie
