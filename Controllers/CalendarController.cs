@@ -39,9 +39,9 @@ namespace TimeTrackerApp.Controllers
             {
                 allEmployees = await _context.Employees
                     .Include(e => e.User)
-                    .OrderBy(e => e.User.LastName)
-                    .ThenBy(e => e.User.FirstName)
                     .ToListAsync();
+                
+                allEmployees = allEmployees.OrderBy(e => e.User.LastName).ThenBy(e => e.User.FirstName).ToList();
 
                 if (employeeId.HasValue)
                 {
@@ -83,7 +83,6 @@ namespace TimeTrackerApp.Controllers
                 .Include(e => e.Project)
                 .Include(e => e.CreatedByUser)
                 .Where(e => e.EmployeeId == employee.Id && e.EntryDate >= weekStart && e.EntryDate <= weekEnd)
-                .OrderBy(e => e.EntryDate)
                 .ToListAsync();
 
             // Sort by StartTime in memory
@@ -103,11 +102,13 @@ namespace TimeTrackerApp.Controllers
                     .Include(e => e.Projects)
                     .FirstOrDefaultAsync(e => e.Id == employee.Id);
                 
-                projects = empWithProjects?.Projects.OrderBy(p => p.Name).ToList() ?? new List<Project>();
+                var projectsList = empWithProjects?.Projects.ToList() ?? new List<Project>();
+                projects = projectsList.OrderBy(p => p.Name).ToList();
             }
             else
             {
-                projects = await _context.Projects.OrderBy(p => p.Name).ToListAsync();
+                projects = await _context.Projects.ToListAsync();
+                projects = projects.OrderBy(p => p.Name).ToList();
             }
 
             var entriesByDay = new Dictionary<DateTime, List<TimeGridEntry>>();
@@ -127,11 +128,11 @@ namespace TimeTrackerApp.Controllers
                         ProjectId = e.ProjectId,
                         ProjectName = e.Project?.Name,
                         Description = e.Description,
-                        CreatedBy = e.CreatedByUser != null ? $"{e.CreatedByUser.FirstName} {e.CreatedByUser.LastName}" : "System"
+                        CreatedBy = e.CreatedByUser != null ? string.Format("{0} {1}", e.CreatedByUser.FirstName, e.CreatedByUser.LastName) : "System"
                     })
-                    .OrderBy(e => e.StartTime)
                     .ToList();
-
+                
+                dayEntries = dayEntries.OrderBy(e => e.StartTime).ToList();
                 entriesByDay[day] = dayEntries;
 
                 var marker = dayMarkers.FirstOrDefault(d => d.Date.Date == day);
@@ -141,11 +142,13 @@ namespace TimeTrackerApp.Controllers
                 }
             }
 
+            var employeeName = string.Format("{0} {1}", employee.User.FirstName, employee.User.LastName);
+            
             var vm = new WeeklyTimeGridViewModel
             {
                 WeekStart = weekStart,
                 EmployeeId = employee.Id,
-                EmployeeName = $"{employee.User.FirstName} {employee.User.LastName}",
+                EmployeeName = employeeName,
                 Projects = projects,
                 EntriesByDay = entriesByDay,
                 DayMarkers = markersByDay,
