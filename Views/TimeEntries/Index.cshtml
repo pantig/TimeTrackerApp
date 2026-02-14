@@ -1,17 +1,19 @@
+@using TimeTrackerApp.Models
 @model List<TimeEntry>
 
 @{
-    ViewData["Title"] = "Moje Wpisy Czasu";
+    ViewData["Title"] = "Wpisy Czasu";
 }
 
 <div class="page-header">
-    <h1>Moje Wpisy Czasu</h1>
-    <a href="/TimeEntries/Create" class="btn btn-primary">+ Nowy wpis</a>
+    <h1>Wpisy Czasu</h1>
+    <a asp-action="Create" class="btn btn-primary">+ Nowy wpis</a>
 </div>
 
 <table class="data-table">
     <thead>
     <tr>
+        <th>Pracownik</th>
         <th>Data</th>
         <th>Od</th>
         <th>Do</th>
@@ -23,14 +25,15 @@
     </tr>
     </thead>
     <tbody>
-    @foreach (var entry in Model.OrderByDescending(e => e.EntryDate))
+    @foreach (var entry in Model)
     {
         <tr>
+            <td>@entry.Employee?.User?.FirstName @entry.Employee?.User?.LastName</td>
             <td>@entry.EntryDate.ToString("yyyy-MM-dd")</td>
-            <td>@entry.StartTime.ToString("HH:mm")</td>
-            <td>@entry.EndTime.ToString("HH:mm")</td>
+            <td>@entry.StartTime.ToString(@"hh\:mm")</td>
+            <td>@entry.EndTime.ToString(@"hh\:mm")</td>
             <td>@entry.TotalHours.ToString("F2")</td>
-            <td>@entry.Project?.Name ?? "-"</td>
+            <td>@(entry.Project?.Name ?? "-")</td>
             <td>@entry.Description</td>
             <td>
                 <span class="badge @(entry.IsApproved ? "badge-success" : "badge-warning")">
@@ -38,8 +41,8 @@
                 </span>
             </td>
             <td>
-                <a href="/TimeEntries/Edit/@entry.Id" class="btn-sm">Edytuj</a>
-                <a href="/TimeEntries/Delete/@entry.Id" class="btn-sm btn-danger">Usuń</a>
+                <a asp-action="Edit" asp-route-id="@entry.Id" class="btn-sm">Edytuj</a>
+                <a asp-action="Delete" asp-route-id="@entry.Id" class="btn-sm btn-danger">Usuń</a>
             </td>
         </tr>
     }

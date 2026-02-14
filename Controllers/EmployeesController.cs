@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TimeTrackerApp.Data;
 using TimeTrackerApp.Models;
 
@@ -15,12 +16,12 @@ namespace TimeTrackerApp.Controllers
             _context = context;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            var employees = _context.Employees
+            var employees = await _context.Employees
                 .Include(e => e.User)
                 .Where(e => e.IsActive)
-                .ToList();
+                .ToListAsync();
 
             return View(employees);
         }

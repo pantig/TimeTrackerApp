@@ -19,12 +19,16 @@ namespace TimeTrackerApp.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // User - Employee (1:many)
+            // User - Employee (1:1)
             modelBuilder.Entity<Employee>()
                 .HasOne(e => e.User)
                 .WithMany(u => u.Employees)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Employee>()
+                .HasIndex(e => e.UserId)
+                .IsUnique();
 
             // Employee - TimeEntry (1:many)
             modelBuilder.Entity<TimeEntry>()

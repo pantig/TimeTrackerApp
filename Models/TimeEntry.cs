@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TimeTrackerApp.Models
 {
-    public class TimeEntry
+    public class TimeEntry : IValidatableObject
     {
         public int Id { get; set; }
 
@@ -63,14 +63,14 @@ namespace TimeTrackerApp.Models
                     new[] { nameof(EndTime) });
             }
 
-            if (EntryDate > DateTime.UtcNow.Date)
+            if (EntryDate.Date > DateTime.UtcNow.Date)
             {
                 yield return new ValidationResult(
                     "Nie można tworzyć wpisów na przyszłość",
                     new[] { nameof(EntryDate) });
             }
 
-            if (EntryDate < DateTime.UtcNow.AddDays(-30).Date)
+            if (EntryDate.Date < DateTime.UtcNow.AddDays(-30).Date)
             {
                 yield return new ValidationResult(
                     "Nie można dodawać wpisów starszych niż 30 dni",

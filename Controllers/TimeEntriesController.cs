@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using TimeTrackerApp.Data;
 using TimeTrackerApp.Models;
@@ -26,7 +27,10 @@ namespace TimeTrackerApp.Controllers
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
             var user = await _context.Users.FindAsync(userId);
 
-            var query = _context.TimeEntries.AsQueryable();
+            var query = _context.TimeEntries
+                .Include(t => t.Employee)
+                .Include(t => t.Project)
+                .AsQueryable();
 
             if (user.Role == UserRole.Employee)
             {
@@ -35,19 +39,30 @@ namespace TimeTrackerApp.Controllers
                     query = query.Where(t => t.EmployeeId == employee.Id);
             }
 
-            var timeEntries = await System.Linq.Dynamic.Core.DynamicQueryableExtensions
-                .ToDynamicListAsync(query.OrderByDescending(t => t.EntryDate));
+            var timeEntries = await query.OrderByDescending(t => t.EntryDate).ToListAsync();
 
-            return View(timeEntries);
+            return View(timeEntries as object);
         }
 
         [HttpGet]
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var user = await _context.Users.FindAsync(userId);
+
+            var employees = _context.Employees.Include(e => e.User).AsQueryable();
+            if (user.Role == UserRole.Employee)
+            {
+                employees = employees.Where(e => e.UserId == userId);
+            }
+
             var viewModel = new TimeEntryViewModel
             {
-                Employees = _context.Employees.ToList(),
-                Projects = _context.Projects.Where(p => p.IsActive).ToList()
+                Employees = await employees.ToListAsync(),
+                Projects = await _context.Projects.Where(p => p.IsActive).ToListAsync(),
+                EntryDate = DateTime.Today,
+                StartTime = new TimeSpan(8, 0, 0),
+                EndTime = new TimeSpan(16, 0, 0)
             };
             return View(viewModel);
         }
@@ -56,15 +71,21 @@ namespace TimeTrackerApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(TimeEntryViewModel model)
         {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var user = await _context.Users.FindAsync(userId);
+
             if (!ModelState.IsValid)
             {
-                model.Employees = _context.Employees.ToList();
-                model.Projects = _context.Projects.Where(p => p.IsActive).ToList();
+                var employeesQuery = _context.Employees.Include(e => e.User).AsQueryable();
+                if (user.Role == UserRole.Employee)
+                {
+                    employeesQuery = employeesQuery.Where(e => e.UserId == userId);
+                }
+                model.Employees = await employeesQuery.ToListAsync();
+                model.Projects = await _context.Projects.Where(p => p.IsActive).ToListAsync();
                 return View(model);
             }
 
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            
             var timeEntry = new TimeEntry
             {
                 EmployeeId = model.EmployeeId,
@@ -76,16 +97,17 @@ namespace TimeTrackerApp.Controllers
                 CreatedBy = userId
             };
 
-            var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
-            var validationContext = new System.ComponentModel.DataAnnotations.ValidationContext(timeEntry);
-            if (!System.ComponentModel.DataAnnotations.Validator.TryValidateObject(timeEntry, validationContext, validationResults, true))
+            // Sprawdzenie uprawnień: Pracownik może dodawać tylko dla siebie
+            if (user.Role == UserRole.Employee)
             {
-                foreach (var result in validationResults)
-                    ModelState.AddModelError("", result.ErrorMessage);
-
-                model.Employees = _context.Employees.ToList();
-                model.Projects = _context.Projects.Where(p => p.IsActive).ToList();
-                return View(model);
+                var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
+                if (employee == null || timeEntry.EmployeeId != employee.Id)
+                {
+                    ModelState.AddModelError("", "Nie masz uprawnień do dodawania wpisów dla innych pracowników.");
+                    model.Employees = new List<Employee> { employee };
+                    model.Projects = await _context.Projects.Where(p => p.IsActive).ToListAsync();
+                    return View(model);
+                }
             }
 
             _context.TimeEntries.Add(timeEntry);
@@ -97,9 +119,26 @@ namespace TimeTrackerApp.Controllers
         [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var user = await _context.Users.FindAsync(userId);
+
             var timeEntry = await _context.TimeEntries.FindAsync(id);
             if (timeEntry == null)
                 return NotFound();
+
+            // Sprawdzenie uprawnień
+            if (user.Role == UserRole.Employee)
+            {
+                var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
+                if (employee == null || timeEntry.EmployeeId != employee.Id)
+                    return Forbid();
+            }
+
+            var employeesQuery = _context.Employees.Include(e => e.User).AsQueryable();
+            if (user.Role == UserRole.Employee)
+            {
+                employeesQuery = employeesQuery.Where(e => e.UserId == userId);
+            }
 
             var viewModel = new TimeEntryViewModel
             {
@@ -110,8 +149,8 @@ namespace TimeTrackerApp.Controllers
                 StartTime = timeEntry.StartTime,
                 EndTime = timeEntry.EndTime,
                 Description = timeEntry.Description,
-                Employees = _context.Employees.ToList(),
-                Projects = _context.Projects.Where(p => p.IsActive).ToList()
+                Employees = await employeesQuery.ToListAsync(),
+                Projects = await _context.Projects.Where(p => p.IsActive).ToListAsync()
             };
 
             return View(viewModel);
@@ -124,16 +163,32 @@ namespace TimeTrackerApp.Controllers
             if (id != model.Id)
                 return BadRequest();
 
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var user = await _context.Users.FindAsync(userId);
+
             if (!ModelState.IsValid)
             {
-                model.Employees = _context.Employees.ToList();
-                model.Projects = _context.Projects.Where(p => p.IsActive).ToList();
+                var employeesQuery = _context.Employees.Include(e => e.User).AsQueryable();
+                if (user.Role == UserRole.Employee)
+                {
+                    employeesQuery = employeesQuery.Where(e => e.UserId == userId);
+                }
+                model.Employees = await employeesQuery.ToListAsync();
+                model.Projects = await _context.Projects.Where(p => p.IsActive).ToListAsync();
                 return View(model);
             }
 
             var timeEntry = await _context.TimeEntries.FindAsync(id);
             if (timeEntry == null)
                 return NotFound();
+
+            // Sprawdzenie uprawnień
+            if (user.Role == UserRole.Employee)
+            {
+                var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
+                if (employee == null || timeEntry.EmployeeId != employee.Id || model.EmployeeId != employee.Id)
+                    return Forbid();
+            }
 
             timeEntry.EmployeeId = model.EmployeeId;
             timeEntry.ProjectId = model.ProjectId;
@@ -151,23 +206,48 @@ namespace TimeTrackerApp.Controllers
         [HttpGet]
         public async Task<IActionResult> Delete(int id)
         {
-            var timeEntry = await _context.TimeEntries.Include(t => t.Employee).FirstOrDefaultAsync(t => t.Id == id);
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var user = await _context.Users.FindAsync(userId);
+
+            var timeEntry = await _context.TimeEntries
+                .Include(t => t.Employee)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
             if (timeEntry == null)
                 return NotFound();
 
-            return View(timeEntry);
+            // Sprawdzenie uprawnień
+            if (user.Role == UserRole.Employee)
+            {
+                var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
+                if (employee == null || timeEntry.EmployeeId != employee.Id)
+                    return Forbid();
+            }
+
+            return View(timeEntry as object);
         }
 
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var user = await _context.Users.FindAsync(userId);
+
             var timeEntry = await _context.TimeEntries.FindAsync(id);
-            if (timeEntry != null)
+            if (timeEntry == null)
+                return NotFound();
+
+            // Sprawdzenie uprawnień
+            if (user.Role == UserRole.Employee)
             {
-                _context.TimeEntries.Remove(timeEntry);
-                await _context.SaveChangesAsync();
+                var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
+                if (employee == null || timeEntry.EmployeeId != employee.Id)
+                    return Forbid();
             }
+
+            _context.TimeEntries.Remove(timeEntry);
+            await _context.SaveChangesAsync();
 
             return RedirectToAction(nameof(Index));
         }

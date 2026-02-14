@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using TimeTrackerApp.Data;
 using TimeTrackerApp.Models;
@@ -38,11 +39,11 @@ namespace TimeTrackerApp.Controllers
             }
             else if (user.Role == UserRole.Manager || user.Role == UserRole.Admin)
             {
-                timeEntries = _context.TimeEntries
+                timeEntries = await _context.TimeEntries
                     .Where(t => t.EntryDate >= fromDate && t.EntryDate <= toDate)
                     .Include(t => t.Employee)
                     .Include(t => t.Project)
-                    .ToList();
+                    .ToListAsync();
             }
 
             var viewModel = new ReportViewModel
@@ -50,8 +51,8 @@ namespace TimeTrackerApp.Controllers
                 FromDate = fromDate,
                 ToDate = toDate,
                 TimeEntries = timeEntries,
-                Employees = _context.Employees.ToList(),
-                Projects = _context.Projects.ToList()
+                Employees = await _context.Employees.ToListAsync(),
+                Projects = await _context.Projects.ToListAsync()
             };
 
             return View(viewModel);
