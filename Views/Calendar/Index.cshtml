@@ -14,6 +14,7 @@
         </div>
         <div class="calendar-info">
             <span>Pracownik: <strong>@ViewBag.EmployeeName</strong></span>
+            <a asp-action="Week" asp-route-date="@DateTime.Today.ToString("yyyy-MM-dd")" asp-route-employeeId="@ViewBag.EmployeeId" class="btn btn-secondary btn-week">Tydzień</a>
         </div>
     </div>
 
@@ -40,7 +41,7 @@
 
                 <div class="calendar-day @(isToday ? "today" : "")">
                     <span class="day-number">@day.Day</span>
-                    
+
                     @if (totalHours > 0)
                     {
                         <div class="day-hours" title="Łącznie @totalHours.ToString("F2") h">

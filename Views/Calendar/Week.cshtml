@@ -1,0 +1,88 @@
+@using TimeTrackerApp.Models.ViewModels
+@model WeekReportViewModel
+
+@{
+    ViewData["Title"] = "Raport tygodniowy";
+}
+
+<div class="week-container">
+    <div class="week-header">
+        <div class="week-nav">
+            <a asp-action="Week" asp-route-date="@Model.PrevWeek.ToString("yyyy-MM-dd")" asp-route-employeeId="@Model.EmployeeId" class="btn-calendar-nav">&laquo;</a>
+            <div>
+                <h2>@Model.WeekStart.ToString("yyyy-MM-dd") – @Model.WeekEnd.ToString("yyyy-MM-dd")</h2>
+                <div class="muted">Pracownik: <strong>@Model.EmployeeName</strong></div>
+            </div>
+            <a asp-action="Week" asp-route-date="@Model.NextWeek.ToString("yyyy-MM-dd")" asp-route-employeeId="@Model.EmployeeId" class="btn-calendar-nav">&raquo;</a>
+        </div>
+
+        <div class="week-actions">
+            <a asp-action="Index" asp-route-year="@Model.WeekStart.Year" asp-route-month="@Model.WeekStart.Month" asp-route-employeeId="@Model.EmployeeId" class="btn btn-secondary">Miesiąc</a>
+        </div>
+    </div>
+
+    <form asp-action="Week" method="post" class="week-form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="EmployeeId" />
+        <input type="hidden" asp-for="WeekStart" />
+
+        <div class="week-grid">
+            @for (int i = 0; i < Model.Days.Count; i++)
+            {
+                var d = Model.Days[i];
+
+                <div class="week-card @(d.Date.Date == DateTime.Today ? "today" : "")">
+                    <div class="week-card-head">
+                        <div class="week-day">
+                            <div class="week-day-name">@d.Date.ToString("dddd")</div>
+                            <div class="week-day-date">@d.Date.ToString("yyyy-MM-dd")</div>
+                        </div>
+                        <div class="week-day-status">
+                            @if (d.IsApproved)
+                            {
+                                <span class="pill pill-ok">Zatwierdzone</span>
+                            }
+                            else
+                            {
+                                <span class="pill pill-warn">Robocze</span>
+                            }
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="Days[@i].Date" value="@d.Date.ToString("yyyy-MM-dd")" />
+                    <input type="hidden" name="Days[@i].IsApproved" value="@d.IsApproved" />
+
+                    <div class="form-row">
+                        <label>Godziny</label>
+                        <input class="input" name="Days[@i].Hours" value="@d.Hours.ToString("0.##")" inputmode="decimal" @(d.IsApproved ? "readonly" : "") />
+                        <div class="hint">Np. 8 lub 7.5</div>
+                    </div>
+
+                    <div class="form-row">
+                        <label>Projekt</label>
+                        <select class="input" name="Days[@i].ProjectId" @(d.IsApproved ? "disabled" : "")>
+                            <option value="">(brak)</option>
+                            @if (Model.Projects != null)
+                            {
+                                foreach (var p in Model.Projects)
+                                {
+                                    <option value="@p.Id" selected="@(d.ProjectId == p.Id)">@p.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <label>Opis</label>
+                        <textarea class="input" name="Days[@i].Description" rows="3" @(d.IsApproved ? "readonly" : "")>@d.Description</textarea>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="week-footer">
+            <div class="muted">Suma tygodnia: <strong>@Model.TotalHours.ToString("0.##") h</strong></div>
+            <button type="submit" class="btn btn-primary">Zapisz tydzień</button>
+        </div>
+    </form>
+</div>
