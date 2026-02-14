@@ -14,6 +14,7 @@ namespace TimeTrackerApp.Data
         public DbSet<Employee> Employees { get; set; }
         public DbSet<TimeEntry> TimeEntries { get; set; }
         public DbSet<Project> Projects { get; set; }
+        public DbSet<DayMarker> DayMarkers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -57,9 +58,27 @@ namespace TimeTrackerApp.Data
                 .HasForeignKey(t => t.CreatedBy)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Employee - DayMarker (1:many)
+            modelBuilder.Entity<DayMarker>()
+                .HasOne(d => d.Employee)
+                .WithMany()
+                .HasForeignKey(d => d.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // User - DayMarker (created by)
+            modelBuilder.Entity<DayMarker>()
+                .HasOne(d => d.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(d => d.CreatedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // Indeksy
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
+                .IsUnique();
+
+            modelBuilder.Entity<DayMarker>()
+                .HasIndex(d => new { d.EmployeeId, d.Date })
                 .IsUnique();
 
             // Wartości domyślne
@@ -69,6 +88,10 @@ namespace TimeTrackerApp.Data
 
             modelBuilder.Entity<TimeEntry>()
                 .Property(t => t.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            modelBuilder.Entity<DayMarker>()
+                .Property(d => d.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP");
         }
     }

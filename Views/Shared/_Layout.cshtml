@@ -20,6 +20,7 @@
                 <a asp-controller="Reports" asp-action="Monthly">Raport miesięczny</a>
                 @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
                 {
+                    <a asp-controller="Projects" asp-action="Index">Projekty</a>
                     <a asp-controller="Employees" asp-action="Index">Pracownicy</a>
                 }
                 <span class="username">👤 @User.Identity.Name</span>
