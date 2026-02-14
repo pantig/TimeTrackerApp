@@ -73,7 +73,7 @@ namespace TimeTrackerApp.Services
                 .Where(t => t.EmployeeId == employeeId && t.EntryDate >= dayStart && t.EntryDate <= dayEnd)
                 .ToListAsync();
             
-            existing = existing.OrderBy(t => t.Id).ToList();
+            existing = System.Linq.Enumerable.OrderBy(existing, t => t.Id).ToList();
 
             if (hours <= 0)
             {

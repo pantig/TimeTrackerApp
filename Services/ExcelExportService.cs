@@ -51,7 +51,7 @@ namespace TimeTrackerApp.Services
                 .GroupBy(e => e.EntryDate.Date)
                 .ToList();
             
-            entriesByDay = entriesByDay.OrderBy(g => g.Key).ToList();
+            entriesByDay = System.Linq.Enumerable.OrderBy(entriesByDay, g => g.Key).ToList();
 
             int currentRow = 10; // Zaczynamy od wiersza 10
             var daysInMonth = DateTime.DaysInMonth(year, month);
@@ -67,7 +67,7 @@ namespace TimeTrackerApp.Services
                 {
                     // Dzień z wpisami
                     var dayEntries = dayGroup.ToList();
-                    dayEntries = dayEntries.OrderBy(e => e.StartTime).ToList();
+                    dayEntries = System.Linq.Enumerable.OrderBy(dayEntries, e => e.StartTime).ToList();
                     var totalHours = dayEntries.Sum(e => e.TotalHours);
 
                     for (int i = 0; i < dayEntries.Count; i++)
@@ -158,7 +158,7 @@ namespace TimeTrackerApp.Services
                 .Select(g => new { Project = g.Key, Hours = g.Sum(e => e.TotalHours) })
                 .ToList();
             
-            projectStats = projectStats.OrderByDescending(p => p.Hours).ToList();
+            projectStats = System.Linq.Enumerable.OrderByDescending(projectStats, p => p.Hours).ToList();
 
             currentRow = currentRow - markerStats.Count; // Wróć do początku statystyk
             foreach (var stat in projectStats)
