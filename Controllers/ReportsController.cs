@@ -66,7 +66,7 @@ namespace TimeTrackerApp.Controllers
                 })
                 .ToList();
             
-            employeeHours = System.Linq.Enumerable.OrderByDescending(employeeHours, e => e.TotalHours).ToList();
+            employeeHours = employeeHours.OrderByDescending(e => e.TotalHours).ToList();
 
             // Grupowanie po projektach
             var projectHours = projects
@@ -81,7 +81,7 @@ namespace TimeTrackerApp.Controllers
                 })
                 .ToList();
             
-            projectHours = System.Linq.Enumerable.OrderByDescending(projectHours, p => p.TotalHours).ToList();
+            projectHours = projectHours.OrderByDescending(p => p.TotalHours).ToList();
 
             var viewModel = new OrganizationSummaryViewModel
             {
@@ -128,7 +128,8 @@ namespace TimeTrackerApp.Controllers
                     .Include(e => e.User)
                     .ToListAsync();
                 
-                allEmployees = System.Linq.Enumerable.OrderBy(allEmployees, e => e.User.LastName)
+                allEmployees = allEmployees
+                    .OrderBy(e => e.User.LastName)
                     .ThenBy(e => e.User.FirstName)
                     .ToList();
 
@@ -155,7 +156,7 @@ namespace TimeTrackerApp.Controllers
                 .Where(t => t.EmployeeId == selectedEmployee.Id && t.EntryDate >= fromDate && t.EntryDate <= toDate)
                 .ToListAsync();
             
-            timeEntries = System.Linq.Enumerable.OrderBy(timeEntries, t => t.EntryDate).ToList();
+            timeEntries = timeEntries.OrderBy(t => t.EntryDate).ToList();
 
             // Grupowanie po dniach
             var entriesByDay = timeEntries
@@ -168,7 +169,7 @@ namespace TimeTrackerApp.Controllers
                 })
                 .ToList();
             
-            entriesByDay = System.Linq.Enumerable.OrderBy(entriesByDay, g => g.Date).ToList();
+            entriesByDay = entriesByDay.OrderBy(g => g.Date).ToList();
 
             // Grupowanie po projektach
             var entriesByProject = timeEntries
@@ -181,7 +182,7 @@ namespace TimeTrackerApp.Controllers
                 })
                 .ToList();
             
-            entriesByProject = System.Linq.Enumerable.OrderByDescending(entriesByProject, p => p.TotalHours).ToList();
+            entriesByProject = entriesByProject.OrderByDescending(p => p.TotalHours).ToList();
 
             var employeeName = string.Format("{0} {1}", selectedEmployee.User.FirstName, selectedEmployee.User.LastName);
             
@@ -236,7 +237,8 @@ namespace TimeTrackerApp.Controllers
                 .Where(t => t.EmployeeId == employeeId && t.EntryDate >= fromDate && t.EntryDate <= toDate)
                 .ToListAsync();
             
-            timeEntries = System.Linq.Enumerable.OrderBy(timeEntries, t => t.EntryDate)
+            timeEntries = timeEntries
+                .OrderBy(t => t.EntryDate)
                 .ThenBy(t => t.StartTime)
                 .ToList();
 

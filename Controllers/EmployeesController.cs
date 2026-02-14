@@ -30,7 +30,8 @@ namespace TimeTrackerApp.Controllers
                 .Where(e => e.IsActive)
                 .ToListAsync();
             
-            employees = System.Linq.Enumerable.OrderBy(employees, e => e.User.LastName)
+            employees = employees
+                .OrderBy(e => e.User.LastName)
                 .ThenBy(e => e.User.FirstName)
                 .ToList();
 
