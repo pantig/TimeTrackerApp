@@ -1,0 +1,68 @@
+@using TimeTrackerApp.Models.ViewModels
+@model CalendarViewModel
+
+@{
+    ViewData["Title"] = "Kalendarz Pracy";
+}
+
+<div class="calendar-container">
+    <div class="calendar-header">
+        <div class="calendar-nav">
+            <a asp-action="Index" asp-route-year="@Model.PrevMonth.Year" asp-route-month="@Model.PrevMonth.Month" asp-route-employeeId="@ViewBag.EmployeeId" class="btn-calendar-nav">&laquo;</a>
+            <h2>@Model.MonthName</h2>
+            <a asp-action="Index" asp-route-year="@Model.NextMonth.Year" asp-route-month="@Model.NextMonth.Month" asp-route-employeeId="@ViewBag.EmployeeId" class="btn-calendar-nav">&raquo;</a>
+        </div>
+        <div class="calendar-info">
+            <span>Pracownik: <strong>@ViewBag.EmployeeName</strong></span>
+        </div>
+    </div>
+
+    <div class="calendar-grid">
+        <div class="calendar-day-header">Pn</div>
+        <div class="calendar-day-header">Wt</div>
+        <div class="calendar-day-header">Śr</div>
+        <div class="calendar-day-header">Cz</div>
+        <div class="calendar-day-header">Pt</div>
+        <div class="calendar-day-header">So</div>
+        <div class="calendar-day-header">Nd</div>
+
+        @foreach (var day in Model.DaysInCalendar)
+        {
+            if (day == DateTime.MinValue)
+            {
+                <div class="calendar-day empty"></div>
+            }
+            else
+            {
+                var dayEntries = Model.TimeEntries.Where(e => e.EntryDate.Date == day.Date).ToList();
+                var totalHours = dayEntries.Sum(e => e.TotalHours);
+                var isToday = day.Date == DateTime.Today;
+
+                <div class="calendar-day @(isToday ? "today" : "")">
+                    <span class="day-number">@day.Day</span>
+                    
+                    @if (totalHours > 0)
+                    {
+                        <div class="day-hours" title="Łącznie @totalHours.ToString("F2") h">
+                            @totalHours.ToString("F1") h
+                        </div>
+                        <div class="day-entries">
+                            @foreach (var entry in dayEntries.Take(2))
+                            {
+                                <div class="entry-dot @(entry.IsApproved ? "approved" : "pending")" title="@entry.Project?.Name: @entry.StartTime.ToString(@"hh\:mm")-@entry.EndTime.ToString(@"hh\:mm")"></div>
+                            }
+                        </div>
+                    }
+
+                    <a asp-controller="TimeEntries" asp-action="Create" asp-route-date="@day.ToString("yyyy-MM-dd")" class="add-entry-link">+</a>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<div class="calendar-legend">
+    <span class="badge badge-success">Zatwierdzone</span>
+    <span class="badge badge-warning">Oczekujące</span>
+    <a asp-controller="TimeEntries" asp-action="Index" class="btn btn-secondary" style="margin-left: 20px;">Lista wpisów</a>
+</div>
