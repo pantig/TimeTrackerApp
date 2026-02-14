@@ -18,6 +18,7 @@ namespace TimeTrackerApp.Services
             return await _context.TimeEntries
                 .Where(t => t.EmployeeId == employeeId && t.EntryDate >= from && t.EntryDate <= to)
                 .Include(t => t.Employee)
+                    .ThenInclude(e => e.User)
                 .Include(t => t.Project)
                 .OrderByDescending(t => t.EntryDate)
                 .ToListAsync();
@@ -28,6 +29,7 @@ namespace TimeTrackerApp.Services
             return await _context.TimeEntries
                 .Where(t => t.ProjectId == projectId)
                 .Include(t => t.Employee)
+                    .ThenInclude(e => e.User)
                 .OrderByDescending(t => t.EntryDate)
                 .ToListAsync();
         }
@@ -52,6 +54,7 @@ namespace TimeTrackerApp.Services
             return await _context.TimeEntries
                 .Where(t => !t.IsApproved)
                 .Include(t => t.Employee)
+                    .ThenInclude(e => e.User)
                 .Include(t => t.Project)
                 .OrderBy(t => t.EntryDate)
                 .ToListAsync();

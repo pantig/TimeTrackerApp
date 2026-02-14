@@ -24,7 +24,7 @@
         {
             <tr>
                 <td>@emp.EmployeeNumber</td>
-                <td>@emp.User?.FirstName @emp.User?.LastName</td>
+                <td>@(emp.User?.FirstName + " " + emp.User?.LastName)</td>
                 <td>@emp.Position</td>
                 <td>@emp.Department</td>
                 <td>@emp.HourlyRate.ToString("C2")</td>

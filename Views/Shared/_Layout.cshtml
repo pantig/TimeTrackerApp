@@ -4,31 +4,33 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - System Rejestracji Czasu Pracy</title>
-    <link rel="stylesheet" href="~/css/site.css" />
+    <!-- Aero Style v2.0 -->
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
 <nav class="navbar">
     <div class="container">
-        <a href="/" class="navbar-brand">⏱️ TimeTracker</a>
+        <a asp-controller="TimeEntries" asp-action="Index" class="navbar-brand"><span>⏱️</span> TimeTracker</a>
         <div class="navbar-menu">
             @if (User.Identity.IsAuthenticated)
             {
-                <a href="/TimeEntries">Wpisy</a>
-                <a href="/Reports/Summary">Raporty</a>
+                <a asp-controller="Calendar" asp-action="Index">📅 Kalendarz</a>
+                <a asp-controller="TimeEntries" asp-action="Index">📝 Wpisy</a>
+                <a asp-controller="Reports" asp-action="Summary">📊 Raporty</a>
                 @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
                 {
-                    <a href="/Employees">Pracownicy</a>
-                    <a href="/Reports/Approval">Zatwierdzenia</a>
+                    <a asp-controller="Employees" asp-action="Index">👥 Pracownicy</a>
+                    <a asp-controller="Reports" asp-action="Approval">✅ Zatwierdzenia</a>
                 }
-                <span class="username">@User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value</span>
-                <form method="post" action="/Account/Logout" style="display:inline;">
+                <span class="username">👤 @User.Identity.Name</span>
+                <form method="post" asp-controller="Account" asp-action="Logout" style="display:inline;">
                     <button type="submit" class="btn-logout">Wyloguj</button>
                 </form>
             }
             else
             {
-                <a href="/Account/Login">Logowanie</a>
-                <a href="/Account/Register">Rejestracja</a>
+                <a asp-controller="Account" asp-action="Login">🔑 Logowanie</a>
+                <a asp-controller="Account" asp-action="Register">📝 Rejestracja</a>
             }
         </div>
     </div>

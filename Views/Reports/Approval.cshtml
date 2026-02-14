@@ -30,7 +30,7 @@ else
             @foreach (var entry in Model)
             {
                 <tr>
-                    <td>@entry.Employee?.User?.FirstName @entry.Employee?.User?.LastName</td>
+                    <td>@(entry.Employee?.User?.FirstName + " " + entry.Employee?.User?.LastName)</td>
                     <td>@entry.EntryDate.ToString("yyyy-MM-dd")</td>
                     <td>@entry.StartTime.ToString(@"hh\:mm")</td>
                     <td>@entry.EndTime.ToString(@"hh\:mm")</td>

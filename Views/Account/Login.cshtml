@@ -2,6 +2,7 @@
 @model LoginViewModel
 
 @{
+    Layout = "_Layout";
     ViewData["Title"] = "Logowanie";
 }
 
@@ -9,17 +10,17 @@
     <div class="auth-card">
         <h1>Logowanie</h1>
         
-        <form method="post" class="form">
-            <div asp-validation-summary="ModelOnly" class="error-summary"></div>
+        <form asp-action="Login" asp-route-returnUrl="@Context.Request.Query["ReturnUrl"]" method="post" class="form">
+            <div asp-validation-summary="All" class="error-summary"></div>
 
             <div class="form-group">
-                <label asp-for="Email"></label>
+                <label asp-for="Email">Email</label>
                 <input asp-for="Email" class="form-control" placeholder="email@example.com" />
                 <span asp-validation-for="Email" class="error"></span>
             </div>
 
             <div class="form-group">
-                <label asp-for="Password"></label>
+                <label asp-for="Password">Hasło</label>
                 <input asp-for="Password" class="form-control" type="password" />
                 <span asp-validation-for="Password" class="error"></span>
             </div>
@@ -35,14 +36,14 @@
         </form>
 
         <p class="auth-link">
-            Nie masz konta? <a href="/Account/Register">Zarejestruj się</a>
+            Nie masz konta? <a asp-action="Register">Zarejestruj się</a>
         </p>
 
         <div class="demo-credentials">
-            <h4>Dane demonstracyjne:</h4>
-            <p>Admin: admin@example.com / admin123</p>
-            <p>Manager: manager@example.com / manager123</p>
-            <p>Employee: employee@example.com / employee123</p>
+            <h4>💡 Dane demonstracyjne:</h4>
+            <p><strong>Admin:</strong> admin@example.com / admin123</p>
+            <p><strong>Manager:</strong> manager@example.com / manager123</p>
+            <p><strong>Employee:</strong> employee@example.com / employee123</p>
         </div>
     </div>
 </div>

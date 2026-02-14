@@ -43,11 +43,11 @@
         {
             <tr>
                 <td>@entry.EntryDate.ToString("yyyy-MM-dd")</td>
-                <td>@entry.Employee?.User.FirstName @entry.Employee?.User.LastName</td>
-                <td>@entry.Project?.Name ?? "-"</td>
+                <td>@(entry.Employee?.User?.FirstName + " " + entry.Employee?.User?.LastName)</td>
+                <td>@(entry.Project?.Name ?? "-")</td>
                 <td>@entry.TotalHours.ToString("F2")</td>
                 <td>@entry.Employee?.HourlyRate.ToString("C2")</td>
-                <td>@(entry.Employee != null ? (entry.Employee.HourlyRate * entry.TotalHours).ToString("C2") : "-")</td>
+                <td>@((entry.Employee?.HourlyRate ?? 0) * entry.TotalHours).ToString("C2")</td>
             </tr>
         }
         </tbody>

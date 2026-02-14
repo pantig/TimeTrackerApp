@@ -29,6 +29,7 @@ namespace TimeTrackerApp.Controllers
 
             var query = _context.TimeEntries
                 .Include(t => t.Employee)
+                    .ThenInclude(e => e.User)
                 .Include(t => t.Project)
                 .AsQueryable();
 
@@ -41,11 +42,11 @@ namespace TimeTrackerApp.Controllers
 
             var timeEntries = await query.OrderByDescending(t => t.EntryDate).ToListAsync();
 
-            return View(timeEntries as object);
+            return View(timeEntries);
         }
 
         [HttpGet]
-        public async Task<IActionResult> Create()
+        public async Task<IActionResult> Create(DateTime? date)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
             var user = await _context.Users.FindAsync(userId);
@@ -60,7 +61,7 @@ namespace TimeTrackerApp.Controllers
             {
                 Employees = await employees.ToListAsync(),
                 Projects = await _context.Projects.Where(p => p.IsActive).ToListAsync(),
-                EntryDate = DateTime.Today,
+                EntryDate = date ?? DateTime.Today,
                 StartTime = new TimeSpan(8, 0, 0),
                 EndTime = new TimeSpan(16, 0, 0)
             };
@@ -224,7 +225,7 @@ namespace TimeTrackerApp.Controllers
                     return Forbid();
             }
 
-            return View(timeEntry as object);
+            return View(timeEntry);
         }
 
         [HttpPost, ActionName("Delete")]

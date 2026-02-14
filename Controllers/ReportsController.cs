@@ -42,6 +42,7 @@ namespace TimeTrackerApp.Controllers
                 timeEntries = await _context.TimeEntries
                     .Where(t => t.EntryDate >= fromDate && t.EntryDate <= toDate)
                     .Include(t => t.Employee)
+                        .ThenInclude(e => e.User)
                     .Include(t => t.Project)
                     .ToListAsync();
             }

@@ -11,7 +11,7 @@ namespace TimeTrackerApp.Models.ViewModels
         public List<Employee> Employees { get; set; } = new();
         public List<Project> Projects { get; set; } = new();
 
-        public decimal TotalHours => TimeEntries.Sum(t => t.TotalHours);
-        public decimal TotalEarnings => TimeEntries.Sum(t => t.Employee.HourlyRate * t.TotalHours);
+        public decimal TotalHours => TimeEntries?.Sum(t => t.TotalHours) ?? 0;
+        public decimal TotalEarnings => TimeEntries?.Sum(t => t.Employee?.HourlyRate * t.TotalHours) ?? 0;
     }
 }

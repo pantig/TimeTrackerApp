@@ -18,13 +18,18 @@ namespace TimeTrackerApp.Controllers
         }
 
         [HttpGet]
-        public IActionResult Login()
+        public IActionResult Login(string returnUrl = null)
         {
+            if (User.Identity.IsAuthenticated)
+            {
+                return RedirectToProperDashboard();
+            }
+            ViewData["ReturnUrl"] = returnUrl;
             return View();
         }
 
         [HttpPost]
-        public async Task<IActionResult> Login(LoginViewModel model)
+        public async Task<IActionResult> Login(LoginViewModel model, string returnUrl = null)
         {
             if (!ModelState.IsValid)
                 return View(model);
@@ -46,12 +51,41 @@ namespace TimeTrackerApp.Controllers
             };
 
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-            var authProperties = new AuthenticationProperties { IsPersistent = model.RememberMe };
+            var authProperties = new AuthenticationProperties 
+            { 
+                IsPersistent = model.RememberMe,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(60)
+            };
 
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
                 new ClaimsPrincipal(claimsIdentity), authProperties);
 
-            return RedirectToAction("Index", "TimeEntries");
+            // Sprawdzenie czy returnUrl nie jest złośliwym przekierowaniem i czy nie jest puste
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) && !returnUrl.Contains("/Account/Login"))
+            {
+                return Redirect(returnUrl);
+            }
+
+            return RedirectToProperDashboard(user.Role);
+        }
+
+        private IActionResult RedirectToProperDashboard(UserRole? role = null)
+        {
+            if (role == null)
+            {
+                var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
+                if (Enum.TryParse<UserRole>(roleClaim, out var r))
+                {
+                    role = r;
+                }
+            }
+
+            if (role == UserRole.Admin || role == UserRole.Manager)
+            {
+                return Redirect("/Employees/Index");
+            }
+
+            return Redirect("/TimeEntries/Index");
         }
 
         [HttpGet]
