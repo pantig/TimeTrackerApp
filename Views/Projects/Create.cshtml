@@ -2,7 +2,7 @@
 
 @{
     ViewData["Title"] = "Nowy projekt";
-    var allEmployees = ViewBag.AllEmployees as List<TimeTrackerApp.Models.Employee>;
+    var allEmployees = ViewBag.Employees as List<TimeTrackerApp.Models.Employee>;
 }
 
 <div style="margin-top: 2rem;">
@@ -80,7 +80,7 @@
 
         <div class="form-group">
             <label>
-                <input asp-for="IsActive" type="checkbox" style="margin-right: 0.5rem;" />
+                <input asp-for="IsActive" type="checkbox" checked style="margin-right: 0.5rem;" />
                 Projekt aktywny
             </label>
         </div>

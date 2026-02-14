@@ -2,15 +2,16 @@
 
 @{
     ViewData["Title"] = "Edytuj projekt";
-    var allEmployees = ViewBag.AllEmployees as List<TimeTrackerApp.Models.Employee>;
+    var allEmployees = ViewBag.Employees as List<TimeTrackerApp.Models.Employee>;
 }
 
 <div style="margin-top: 2rem;">
     <h2>Edytuj projekt</h2>
 
-    <form method="post" asp-action="Edit" class="card">
-        <input type="hidden" asp-for="Id" />
+    <form method="post" asp-action="Edit" asp-route-id="@Model.Id" class="card">
         <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+        <input type="hidden" asp-for="Id" />
 
         <div class="form-group">
             <label asp-for="Name">Nazwa projektu</label>
@@ -64,11 +65,11 @@
                 {
                     @foreach (var employee in allEmployees)
                     {
-                        var isAssigned = Model.Employees.Any(e => e.Id == employee.Id);
+                        var isChecked = Model.Employees?.Any(e => e.Id == employee.Id) ?? false;
                         <div style="margin-bottom: 0.5rem;">
                             <label style="display: flex; align-items: center; cursor: pointer;">
                                 <input type="checkbox" name="selectedEmployees" value="@employee.Id" 
-                                       checked="@isAssigned" style="margin-right: 0.5rem;" />
+                                       @(isChecked ? "checked" : "") style="margin-right: 0.5rem;" />
                                 <span>@employee.User.FirstName @employee.User.LastName (@employee.Position)</span>
                             </label>
                         </div>
