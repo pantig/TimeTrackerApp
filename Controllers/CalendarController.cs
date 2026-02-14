@@ -73,10 +73,18 @@ namespace TimeTrackerApp.Controllers
             var weekStart = StartOfWeek(anchor, DayOfWeek.Monday);
             var weekEnd = weekStart.AddDays(6);
 
-            var entries = await _timeEntryService.GetTimeEntriesForEmployeeAsync(
-                employee.Id,
-                weekStart,
-                weekEnd.AddDays(1).AddTicks(-1));
+            // Fetch entries from database without sorting by StartTime (SQLite limitation)
+            var entries = await _context.TimeEntries
+                .Include(e => e.Employee)
+                    .ThenInclude(e => e.User)
+                .Include(e => e.Project)
+                .Include(e => e.CreatedByUser)
+                .Where(e => e.EmployeeId == employee.Id && e.EntryDate >= weekStart && e.EntryDate <= weekEnd)
+                .OrderBy(e => e.EntryDate)
+                .ToListAsync();
+
+            // Sort by StartTime in memory (LINQ to Objects)
+            entries = entries.OrderBy(e => e.EntryDate).ThenBy(e => e.StartTime).ToList();
 
             var projects = await _context.Projects.OrderBy(p => p.Name).ToListAsync();
 
@@ -95,7 +103,8 @@ namespace TimeTrackerApp.Controllers
                         ProjectId = e.ProjectId,
                         ProjectName = e.Project?.Name,
                         Description = e.Description,
-                        IsApproved = e.IsApproved
+                        IsApproved = e.IsApproved,
+                        CreatedBy = e.CreatedByUser != null ? $"{e.CreatedByUser.FirstName} {e.CreatedByUser.LastName}" : "System"
                     })
                     .OrderBy(e => e.StartTime)
                     .ToList();
@@ -143,7 +152,9 @@ namespace TimeTrackerApp.Controllers
                 EndTime = request.EndTime,
                 ProjectId = request.ProjectId,
                 Description = request.Description,
-                IsApproved = false
+                IsApproved = false,
+                CreatedBy = userId,
+                CreatedAt = DateTime.UtcNow
             };
 
             _context.TimeEntries.Add(entry);
