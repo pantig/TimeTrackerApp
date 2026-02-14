@@ -1,69 +1,353 @@
 @using TimeTrackerApp.Models.ViewModels
-@model CalendarViewModel
+@model WeeklyTimeGridViewModel
 
 @{
-    ViewData["Title"] = "Kalendarz Pracy";
+    ViewData["Title"] = "Kalendarz Tygodniowy";
 }
 
-<div class="calendar-container">
-    <div class="calendar-header">
-        <div class="calendar-nav">
-            <a asp-action="Index" asp-route-year="@Model.PrevMonth.Year" asp-route-month="@Model.PrevMonth.Month" asp-route-employeeId="@ViewBag.EmployeeId" class="btn-calendar-nav">&laquo;</a>
-            <h2>@Model.MonthName</h2>
-            <a asp-action="Index" asp-route-year="@Model.NextMonth.Year" asp-route-month="@Model.NextMonth.Month" asp-route-employeeId="@ViewBag.EmployeeId" class="btn-calendar-nav">&raquo;</a>
+<div class="timegrid-container">
+    <div class="timegrid-header">
+        <div class="timegrid-nav">
+            <a asp-action="Index" asp-route-date="@Model.PrevWeek.ToString("yyyy-MM-dd")" asp-route-employeeId="@Model.EmployeeId" class="btn-calendar-nav">&laquo;</a>
+            <div class="timegrid-title">
+                <h2>@Model.WeekStart.ToString("d MMM") – @Model.WeekEnd.ToString("d MMM yyyy")</h2>
+                <div class="muted">
+                    @if (Model.CanSelectEmployee && Model.AllEmployees != null)
+                    {
+                        <span>Pracownik: </span>
+                        <select id="employeeSelect" class="employee-select" onchange="changeEmployee(this.value)">
+                            @foreach (var emp in Model.AllEmployees)
+                            {
+                                <option value="@emp.Id" selected="@(emp.Id == Model.EmployeeId)">@emp.User.FirstName @emp.User.LastName</option>
+                            }
+                        </select>
+                    }
+                    else
+                    {
+                        <span>Pracownik: <strong>@Model.EmployeeName</strong></span>
+                    }
+                </div>
+            </div>
+            <a asp-action="Index" asp-route-date="@Model.NextWeek.ToString("yyyy-MM-dd")" asp-route-employeeId="@Model.EmployeeId" class="btn-calendar-nav">&raquo;</a>
         </div>
-        <div class="calendar-info">
-            <span>Pracownik: <strong>@ViewBag.EmployeeName</strong></span>
-            <a asp-action="Week" asp-route-date="@DateTime.Today.ToString("yyyy-MM-dd")" asp-route-employeeId="@ViewBag.EmployeeId" class="btn btn-secondary btn-week">Tydzień</a>
+        <div class="timegrid-actions">
+            <a asp-controller="TimeEntries" asp-action="Index" class="btn btn-secondary">Lista wpisów</a>
         </div>
     </div>
 
-    <div class="calendar-grid">
-        <div class="calendar-day-header">Pn</div>
-        <div class="calendar-day-header">Wt</div>
-        <div class="calendar-day-header">Śr</div>
-        <div class="calendar-day-header">Cz</div>
-        <div class="calendar-day-header">Pt</div>
-        <div class="calendar-day-header">So</div>
-        <div class="calendar-day-header">Nd</div>
+    <div class="timegrid-wrapper">
+        <div class="timegrid">
+            <!-- Time column -->
+            <div class="timegrid-time-col">
+                <div class="timegrid-time-header"></div>
+                @for (int hour = 0; hour < 24; hour++)
+                {
+                    <div class="timegrid-time-cell">
+                        <span>@hour.ToString("00"):00</span>
+                    </div>
+                }
+            </div>
 
-        @foreach (var day in Model.DaysInCalendar)
-        {
-            if (day == DateTime.MinValue)
+            <!-- Day columns -->
+            @foreach (var day in Model.DaysOfWeek)
             {
-                <div class="calendar-day empty"></div>
-            }
-            else
-            {
-                var dayEntries = Model.TimeEntries.Where(e => e.EntryDate.Date == day.Date).ToList();
-                var totalHours = dayEntries.Sum(e => e.TotalHours);
                 var isToday = day.Date == DateTime.Today;
+                var dayEntries = Model.EntriesByDay.ContainsKey(day) ? Model.EntriesByDay[day] : new List<TimeGridEntry>();
 
-                <div class="calendar-day @(isToday ? "today" : "")">
-                    <span class="day-number">@day.Day</span>
+                <div class="timegrid-day-col @(isToday ? "today" : "")" data-date="@day.ToString("yyyy-MM-dd")">
+                    <div class="timegrid-day-header">
+                        <div class="day-name">@day.ToString("ddd", new System.Globalization.CultureInfo("pl-PL"))</div>
+                        <div class="day-date">@day.ToString("d MMM")</div>
+                    </div>
 
-                    @if (totalHours > 0)
-                    {
-                        <div class="day-hours" title="Łącznie @totalHours.ToString("F2") h">
-                            @totalHours.ToString("F1") h
-                        </div>
-                        <div class="day-entries">
-                            @foreach (var entry in dayEntries.Take(2))
-                            {
-                                <div class="entry-dot @(entry.IsApproved ? "approved" : "pending")" title="@entry.Project?.Name: @entry.StartTime.ToString(@"hh\:mm")-@entry.EndTime.ToString(@"hh\:mm")"></div>
-                            }
-                        </div>
-                    }
+                    <!-- Hour cells -->
+                    <div class="timegrid-day-cells">
+                        @for (int hour = 0; hour < 24; hour++)
+                        {
+                            <div class="timegrid-hour-cell" data-hour="@hour"></div>
+                        }
 
-                    <a asp-controller="TimeEntries" asp-action="Create" asp-route-date="@day.ToString("yyyy-MM-dd")" class="add-entry-link">+</a>
+                        <!-- Render existing entries -->
+                        @foreach (var entry in dayEntries)
+                        {
+                            var startHour = entry.StartTime.TotalHours;
+                            var duration = (entry.EndTime - entry.StartTime).TotalHours;
+                            var top = startHour * 60; // 60px per hour
+                            var height = duration * 60;
+
+                            <div class="timegrid-entry @(entry.IsApproved ? "approved" : "pending")"
+                                 style="top: @(top)px; height: @(height)px;"
+                                 data-entry-id="@entry.Id"
+                                 data-start="@entry.StartTime.ToString()"
+                                 data-end="@entry.EndTime.ToString()"
+                                 data-project-id="@entry.ProjectId"
+                                 data-approved="@entry.IsApproved.ToString().ToLower()">
+                                <div class="entry-time">@entry.StartTime.ToString(@"hh\:mm") – @entry.EndTime.ToString(@"hh\:mm")</div>
+                                <div class="entry-project">@(entry.ProjectName ?? "(brak projektu)")</div>
+                                @if (!string.IsNullOrEmpty(entry.Description))
+                                {
+                                    <div class="entry-desc">@entry.Description</div>
+                                }
+                                @if (!entry.IsApproved)
+                                {
+                                    <button class="entry-edit" onclick="editEntry(@entry.Id)">✎</button>
+                                    <button class="entry-delete" onclick="deleteEntry(@entry.Id)">×</button>
+                                }
+                            </div>
+                        }
+                    </div>
                 </div>
             }
-        }
+        </div>
+    </div>
+
+    <div class="timegrid-legend">
+        <span class="badge badge-success">Zatwierdzone</span>
+        <span class="badge badge-warning">Oczekujące</span>
+        <div class="hint" style="margin-left: auto;">Kliknij i przeciągnij na siatce, aby dodać nowy wpis</div>
     </div>
 </div>
 
-<div class="calendar-legend">
-    <span class="badge badge-success">Zatwierdzone</span>
-    <span class="badge badge-warning">Oczekujące</span>
-    <a asp-controller="TimeEntries" asp-action="Index" class="btn btn-secondary" style="margin-left: 20px;">Lista wpisów</a>
+<!-- Modal for adding/editing entry -->
+<div id="entryModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Nowy wpis czasu</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="entryId" value="" />
+            <input type="hidden" id="entryDate" value="" />
+            <input type="hidden" id="entryStartTime" value="" />
+            <input type="hidden" id="entryEndTime" value="" />
+
+            <div class="form-group">
+                <label>Czas</label>
+                <div id="timeDisplay" class="time-display"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="projectSelect">Projekt</label>
+                <select id="projectSelect" class="form-control">
+                    <option value="">(brak)</option>
+                    @foreach (var project in Model.Projects)
+                    {
+                        <option value="@project.Id">@project.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="descriptionInput">Opis</label>
+                <textarea id="descriptionInput" class="form-control" rows="3" placeholder="Opisz wykonaną pracę..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()">Anuluj</button>
+            <button class="btn btn-primary" onclick="saveEntry()">Zapisz</button>
+        </div>
+    </div>
 </div>
+
+<script>
+const employeeId = @Model.EmployeeId;
+let isSelecting = false;
+let selectionStart = null;
+let selectionEnd = null;
+let currentDayCol = null;
+
+function changeEmployee(newEmployeeId) {
+    const currentDate = '@Model.WeekStart.ToString("yyyy-MM-dd")';
+    window.location.href = `@Url.Action("Index", "Calendar")?date=${currentDate}&employeeId=${newEmployeeId}`;
+}
+
+// Mouse selection for creating new entries
+document.querySelectorAll('.timegrid-day-col').forEach(dayCol => {
+    const cells = dayCol.querySelector('.timegrid-day-cells');
+    
+    cells.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('timegrid-hour-cell')) {
+            isSelecting = true;
+            currentDayCol = dayCol;
+            const hour = parseInt(e.target.dataset.hour);
+            selectionStart = hour;
+            selectionEnd = hour;
+            updateSelection();
+        }
+    });
+    
+    cells.addEventListener('mouseover', (e) => {
+        if (isSelecting && e.target.classList.contains('timegrid-hour-cell')) {
+            const hour = parseInt(e.target.dataset.hour);
+            selectionEnd = hour;
+            updateSelection();
+        }
+    });
+});
+
+document.addEventListener('mouseup', () => {
+    if (isSelecting) {
+        isSelecting = false;
+        if (selectionStart !== null && selectionEnd !== null) {
+            openModalForNewEntry();
+        }
+    }
+});
+
+function updateSelection() {
+    if (!currentDayCol) return;
+    
+    const cells = currentDayCol.querySelectorAll('.timegrid-hour-cell');
+    cells.forEach((cell, index) => {
+        const hour = parseInt(cell.dataset.hour);
+        const min = Math.min(selectionStart, selectionEnd);
+        const max = Math.max(selectionStart, selectionEnd);
+        
+        if (hour >= min && hour <= max) {
+            cell.classList.add('selected');
+        } else {
+            cell.classList.remove('selected');
+        }
+    });
+}
+
+function clearSelection() {
+    document.querySelectorAll('.timegrid-hour-cell').forEach(cell => {
+        cell.classList.remove('selected');
+    });
+}
+
+function openModalForNewEntry() {
+    const min = Math.min(selectionStart, selectionEnd);
+    const max = Math.max(selectionStart, selectionEnd) + 1;
+    const date = currentDayCol.dataset.date;
+    
+    document.getElementById('modalTitle').textContent = 'Nowy wpis czasu';
+    document.getElementById('entryId').value = '';
+    document.getElementById('entryDate').value = date;
+    document.getElementById('entryStartTime').value = `${min.toString().padStart(2, '0')}:00:00`;
+    document.getElementById('entryEndTime').value = `${max.toString().padStart(2, '0')}:00:00`;
+    document.getElementById('timeDisplay').textContent = `${min.toString().padStart(2, '0')}:00 – ${max.toString().padStart(2, '0')}:00`;
+    document.getElementById('projectSelect').value = '';
+    document.getElementById('descriptionInput').value = '';
+    
+    document.getElementById('entryModal').style.display = 'flex';
+}
+
+function editEntry(entryId) {
+    const entryEl = document.querySelector(`[data-entry-id="${entryId}"]`);
+    if (!entryEl) return;
+    
+    const isApproved = entryEl.dataset.approved === 'true';
+    if (isApproved) {
+        alert('Nie można edytować zatwierdzonego wpisu');
+        return;
+    }
+    
+    const dayCol = entryEl.closest('.timegrid-day-col');
+    const date = dayCol.dataset.date;
+    const startTime = entryEl.dataset.start;
+    const endTime = entryEl.dataset.end;
+    const projectId = entryEl.dataset.projectId || '';
+    const description = entryEl.querySelector('.entry-desc')?.textContent || '';
+    
+    document.getElementById('modalTitle').textContent = 'Edytuj wpis';
+    document.getElementById('entryId').value = entryId;
+    document.getElementById('entryDate').value = date;
+    document.getElementById('entryStartTime').value = startTime;
+    document.getElementById('entryEndTime').value = endTime;
+    document.getElementById('timeDisplay').textContent = `${startTime.substring(0, 5)} – ${endTime.substring(0, 5)}`;
+    document.getElementById('projectSelect').value = projectId;
+    document.getElementById('descriptionInput').value = description;
+    
+    document.getElementById('entryModal').style.display = 'flex';
+}
+
+async function deleteEntry(entryId) {
+    if (!confirm('Czy na pewno usunąć ten wpis?')) return;
+    
+    const response = await fetch('@Url.Action("DeleteEntry", "Calendar")', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+        },
+        body: JSON.stringify({ id: entryId })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+        location.reload();
+    } else {
+        alert(result.message || 'Błąd usuwania wpisu');
+    }
+}
+
+function closeModal() {
+    document.getElementById('entryModal').style.display = 'none';
+    clearSelection();
+    selectionStart = null;
+    selectionEnd = null;
+    currentDayCol = null;
+}
+
+async function saveEntry() {
+    const entryId = document.getElementById('entryId').value;
+    const date = document.getElementById('entryDate').value;
+    const startTime = document.getElementById('entryStartTime').value;
+    const endTime = document.getElementById('entryEndTime').value;
+    const projectId = document.getElementById('projectSelect').value || null;
+    const description = document.getElementById('descriptionInput').value;
+    
+    if (entryId) {
+        // Update existing
+        const response = await fetch('@Url.Action("UpdateEntry", "Calendar")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+            },
+            body: JSON.stringify({
+                id: parseInt(entryId),
+                projectId: projectId ? parseInt(projectId) : null,
+                description: description
+            })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            location.reload();
+        } else {
+            alert(result.message || 'Błąd aktualizacji wpisu');
+        }
+    } else {
+        // Add new
+        const response = await fetch('@Url.Action("AddEntry", "Calendar")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+            },
+            body: JSON.stringify({
+                employeeId: employeeId,
+                date: date,
+                startTime: startTime,
+                endTime: endTime,
+                projectId: projectId ? parseInt(projectId) : null,
+                description: description
+            })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            location.reload();
+        } else {
+            alert(result.message || 'Błąd dodawania wpisu');
+        }
+    }
+}
+</script>
+
+@section Scripts {
+    @Html.AntiForgeryToken()
+}
