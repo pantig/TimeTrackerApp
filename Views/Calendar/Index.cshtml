@@ -124,6 +124,7 @@
                             <div class="timegrid-entry"
                                  style="top: @(top)px; height: @(height)px;"
                                  data-entry-id="@entry.Id"
+                                 data-entry-date="@day.ToString("yyyy-MM-dd")"
                                  data-start="@entry.StartTime.ToString()"
                                  data-end="@entry.EndTime.ToString()"
                                  data-project-id="@entry.ProjectId"
@@ -151,7 +152,7 @@
     <div class="timegrid-legend">
         <div class="hint">
             <strong>Wskazówki:</strong> 
-            <span>Przeciągnij wpis, aby przenieść (z live preview). </span>
+            <span>Przeciągnij wpis, aby przenieść (z live preview + zmiana dnia!). </span>
             <span>Użyj uchwytów góra/dół, aby zmienić czas trwania. </span>
             <span>Kliknij pustą przestrzeń, aby dodać nowy wpis.</span>
         </div>
@@ -273,6 +274,7 @@ let dragStartX = 0;
 let entryOriginalTop = 0;
 let entryOriginalHeight = 0;
 let currentTargetDay = null;
+let currentTargetDate = null;
 const PIXELS_PER_HOUR = 60;
 const SNAP_MINUTES = 15;
 
@@ -375,8 +377,15 @@ function formatTimeDisplay(hours, minutes) {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const days = ['Nd', 'Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So'];
+    const months = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
+    return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+}
+
 // ====================
-// DRAG & DROP: Moving entries with LIVE PREVIEW
+// DRAG & DROP: Moving entries with LIVE PREVIEW + MULTI-DAY SUPPORT
 // ====================
 
 document.querySelectorAll('.timegrid-entry').forEach(entry => {
@@ -401,11 +410,10 @@ document.querySelectorAll('.timegrid-entry').forEach(entry => {
         dragPreviewEl.style.width = entryRect.width + 'px';
         dragPreviewEl.style.height = entryRect.height + 'px';
         dragPreviewEl.style.display = 'block';
-        dragPreviewEl.style.opacity = '0.8';
         dragPreviewEl.innerHTML = entry.innerHTML;
         
         // Hide original
-        entry.style.opacity = '0.3';
+        entry.classList.add('dragging');
         
         document.addEventListener('mousemove', handleDragMove);
         document.addEventListener('mouseup', handleDragEnd);
@@ -419,17 +427,23 @@ function handleDragMove(e) {
     dragPreviewEl.style.left = (e.clientX - dragPreviewEl.offsetWidth / 2) + 'px';
     dragPreviewEl.style.top = (e.clientY - 20) + 'px';
     
-    // Find target day cell
-    const targetDayCell = document.elementFromPoint(e.clientX, e.clientY)?.closest('.timegrid-day-cells');
+    // Find target day column using pointer-events: none trick
+    dragPreviewEl.style.pointerEvents = 'none';
+    const elementBelow = document.elementFromPoint(e.clientX, e.clientY);
+    dragPreviewEl.style.pointerEvents = 'auto';
     
-    if (targetDayCell) {
+    const targetDayCell = elementBelow?.closest('.timegrid-day-cells');
+    const targetDayCol = elementBelow?.closest('.timegrid-day-col');
+    
+    if (targetDayCell && targetDayCol) {
         currentTargetDay = targetDayCell;
+        currentTargetDate = targetDayCol.dataset.date;
+        
         const rect = targetDayCell.getBoundingClientRect();
         const offsetY = e.clientY - rect.top;
         
         // Calculate new time with snap
         const time = pixelsToTime(offsetY, true);
-        const snappedTop = timeToPixels(time.hours, time.minutes);
         
         // Calculate duration from original entry
         const oldStart = draggedEntry.dataset.start;
@@ -445,11 +459,18 @@ function handleDragMove(e) {
         
         // Validate range
         if (time.hours >= 0 && time.hours < 24 && newEndH < 24) {
-            // Update preview content
             const timeDisplay = formatTimeDisplay(time.hours, time.minutes) + ' – ' + formatTimeDisplay(newEndH, newEndM);
+            const dateDisplay = formatDate(currentTargetDate);
+            
             const timeEl = dragPreviewEl.querySelector('.entry-time');
             if (timeEl) {
-                timeEl.textContent = timeDisplay;
+                // Check if date changed
+                const originalDate = draggedEntry.dataset.entryDate;
+                if (originalDate !== currentTargetDate) {
+                    timeEl.textContent = `${dateDisplay} | ${timeDisplay}`;
+                } else {
+                    timeEl.textContent = timeDisplay;
+                }
             }
         }
     }
@@ -468,11 +489,12 @@ async function handleDragEnd(e) {
     }
     
     // Show original
-    draggedEntry.style.opacity = '1';
+    draggedEntry.classList.remove('dragging');
     
-    if (!currentTargetDay) {
+    if (!currentTargetDay || !currentTargetDate) {
         draggedEntry = null;
         currentTargetDay = null;
+        currentTargetDate = null;
         return;
     }
     
@@ -499,34 +521,76 @@ async function handleDragEnd(e) {
         alert('Wpis wykracza poza zakres 00:00 - 24:00');
         draggedEntry = null;
         currentTargetDay = null;
+        currentTargetDate = null;
         return;
     }
     
-    const newDate = currentTargetDay.closest('.timegrid-day-col').dataset.date;
     const entryId = draggedEntry.dataset.entryId;
+    const originalDate = draggedEntry.dataset.entryDate;
     
-    // Update via API
-    const response = await fetch('@Url.Action("UpdateEntry", "Calendar")', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            id: parseInt(entryId),
-            startTime: formatTimeSpan(newStartH, newStartM),
-            endTime: formatTimeSpan(newEndH, newEndM),
-            projectId: draggedEntry.dataset.projectId ? parseInt(draggedEntry.dataset.projectId) : null,
-            description: draggedEntry.querySelector('.entry-desc')?.textContent || ''
-        })
-    });
-    
-    const result = await response.json();
-    if (result.success) {
-        location.reload();
+    // Check if date changed - if so, need to delete and create new entry
+    if (originalDate !== currentTargetDate) {
+        // Delete old entry
+        const deleteResponse = await fetch('@Url.Action("DeleteEntry", "Calendar")', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: parseInt(entryId) })
+        });
+        
+        const deleteResult = await deleteResponse.json();
+        if (!deleteResult.success) {
+            alert(deleteResult.message || 'Błąd usuwania wpisu');
+            draggedEntry = null;
+            currentTargetDay = null;
+            currentTargetDate = null;
+            return;
+        }
+        
+        // Create new entry on new date
+        const createResponse = await fetch('@Url.Action("AddEntry", "Calendar")', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                employeeId: employeeId,
+                date: currentTargetDate,
+                startTime: formatTimeSpan(newStartH, newStartM),
+                endTime: formatTimeSpan(newEndH, newEndM),
+                projectId: draggedEntry.dataset.projectId ? parseInt(draggedEntry.dataset.projectId) : null,
+                description: draggedEntry.querySelector('.entry-desc')?.textContent || ''
+            })
+        });
+        
+        const createResult = await createResponse.json();
+        if (createResult.success) {
+            location.reload();
+        } else {
+            alert(createResult.message || 'Błąd tworzenia wpisu');
+        }
     } else {
-        alert(result.message || 'Błąd przesuwania wpisu');
+        // Same day - just update time
+        const response = await fetch('@Url.Action("UpdateEntry", "Calendar")', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: parseInt(entryId),
+                startTime: formatTimeSpan(newStartH, newStartM),
+                endTime: formatTimeSpan(newEndH, newEndM),
+                projectId: draggedEntry.dataset.projectId ? parseInt(draggedEntry.dataset.projectId) : null,
+                description: draggedEntry.querySelector('.entry-desc')?.textContent || ''
+            })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            location.reload();
+        } else {
+            alert(result.message || 'Błąd przesuwania wpisu');
+        }
     }
     
     draggedEntry = null;
     currentTargetDay = null;
+    currentTargetDate = null;
 }
 
 // ====================
