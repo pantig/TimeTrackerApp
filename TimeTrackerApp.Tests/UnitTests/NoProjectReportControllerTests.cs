@@ -64,6 +64,7 @@ public class NoProjectReportControllerTests : IDisposable
             Id = 3,
             UserId = 3,
             Position = "Developer",
+            Department = "IT",
             IsActive = true
         };
 
@@ -74,6 +75,7 @@ public class NoProjectReportControllerTests : IDisposable
         {
             Id = 1,
             Name = "Project A",
+            Description = "Test Project A",
             IsActive = true,
             StartDate = DateTime.Today,
             ManagerId = 2,
@@ -84,6 +86,7 @@ public class NoProjectReportControllerTests : IDisposable
         {
             Id = 2,
             Name = "Project B",
+            Description = "Test Project B",
             IsActive = true,
             StartDate = DateTime.Today,
             ManagerId = 2,
@@ -295,6 +298,7 @@ public class NoProjectReportControllerTests : IDisposable
             Id = 99,
             UserId = 99,
             Position = "Other",
+            Department = "HR",
             IsActive = true
         };
         _context.Employees.Add(otherEmployee);
@@ -307,6 +311,7 @@ public class NoProjectReportControllerTests : IDisposable
             EntryDate = DateTime.Today,
             StartTime = TimeSpan.FromHours(9),
             EndTime = TimeSpan.FromHours(10),
+            Description = "Other work",
             CreatedBy = 99
         };
         _context.TimeEntries.Add(otherEntry);
