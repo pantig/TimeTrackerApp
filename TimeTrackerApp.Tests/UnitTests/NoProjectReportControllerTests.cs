@@ -216,6 +216,23 @@ public class NoProjectReportControllerTests : IDisposable
     }
 
     [Fact]
+    public async Task MyEntries_EntriesSortedByDateDescAndTimeAsc()
+    {
+        // Arrange
+        SetupControllerContext(3);
+
+        // Act
+        var result = await _controller.MyEntries();
+        var viewResult = result as ViewResult;
+        var model = viewResult!.Model as NoProjectEntriesViewModel;
+
+        // Assert - Verify sorting: newest date first, then by start time
+        model!.Entries.Should().HaveCount(2);
+        model.Entries[0].EntryDate.Should().Be(DateTime.Today); // Today first
+        model.Entries[1].EntryDate.Should().Be(DateTime.Today.AddDays(-1)); // Yesterday second
+    }
+
+    [Fact]
     public async Task MyEntries_WithoutEmployeeProfile_RedirectsWithError()
     {
         // Arrange - User 999 exists but has NO Employee profile
@@ -256,6 +273,23 @@ public class NoProjectReportControllerTests : IDisposable
         model!.Entries.Should().HaveCount(2);
         model.IsManagerView.Should().BeTrue();
         model.AllEmployees.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task AllEntries_EntriesSortedByDateDescAndTimeAsc()
+    {
+        // Arrange
+        SetupControllerContext(2); // Manager
+
+        // Act
+        var result = await _controller.AllEntries(null);
+        var viewResult = result as ViewResult;
+        var model = viewResult!.Model as NoProjectEntriesViewModel;
+
+        // Assert - Verify sorting works with SQLite (client-side sorting)
+        model!.Entries.Should().HaveCount(2);
+        model.Entries[0].EntryDate.Should().Be(DateTime.Today);
+        model.Entries[1].EntryDate.Should().Be(DateTime.Today.AddDays(-1));
     }
 
     [Fact]

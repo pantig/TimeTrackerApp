@@ -37,14 +37,19 @@ namespace TimeTrackerApp.Controllers
                 return RedirectToAction("Index", "TimeEntries");
             }
 
+            // Pobierz dane, a następnie sortuj po stronie klienta (SQLite nie wspiera TimeSpan w ORDER BY)
             var entriesWithoutProject = await _context.TimeEntries
                 .Include(e => e.Employee)
                     .ThenInclude(e => e.User)
                 .Include(e => e.CreatedByUser)
                 .Where(e => e.EmployeeId == employee.Id && e.ProjectId == null)
+                .ToListAsync();
+
+            // Sortowanie po stronie klienta
+            entriesWithoutProject = entriesWithoutProject
                 .OrderByDescending(e => e.EntryDate)
                 .ThenBy(e => e.StartTime)
-                .ToListAsync();
+                .ToList();
 
             var projects = await _context.Projects
                 .Where(p => p.IsActive && p.Employees.Any(emp => emp.Id == employee.Id))
@@ -77,10 +82,14 @@ namespace TimeTrackerApp.Controllers
                 query = query.Where(e => e.EmployeeId == employeeId.Value);
             }
 
-            var entriesWithoutProject = await query
+            // Pobierz dane, a następnie sortuj po stronie klienta (SQLite nie wspiera TimeSpan w ORDER BY)
+            var entriesWithoutProject = await query.ToListAsync();
+
+            // Sortowanie po stronie klienta
+            entriesWithoutProject = entriesWithoutProject
                 .OrderByDescending(e => e.EntryDate)
                 .ThenBy(e => e.StartTime)
-                .ToListAsync();
+                .ToList();
 
             var employees = await _context.Employees
                 .Include(e => e.User)
