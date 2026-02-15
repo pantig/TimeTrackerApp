@@ -91,6 +91,7 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             Id = 1,
             UserId = 1,
             Position = "Administrator",
+            Department = "IT",
             HireDate = DateTime.UtcNow.AddYears(-2)
         };
 
@@ -99,6 +100,7 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             Id = 2,
             UserId = 2,
             Position = "Team Manager",
+            Department = "Management",
             HireDate = DateTime.UtcNow.AddYears(-1)
         };
 
@@ -107,6 +109,7 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             Id = 3,
             UserId = 3,
             Position = "Software Developer",
+            Department = "Development",
             HireDate = DateTime.UtcNow.AddMonths(-6)
         };
 
