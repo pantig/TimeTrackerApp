@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
 using TimeTrackerApp.Controllers;
 using TimeTrackerApp.Data;
@@ -158,10 +159,17 @@ public class NoProjectReportControllerTests : IDisposable
         var identity = new ClaimsIdentity(claims, "TestAuth");
         var claimsPrincipal = new ClaimsPrincipal(identity);
 
+        var httpContext = new DefaultHttpContext { User = claimsPrincipal };
+        
+        // Initialize TempData to avoid NullReferenceException
+        var tempData = new TempDataDictionary(httpContext, Mock.Of<ITempDataProvider>());
+
         _controller.ControllerContext = new ControllerContext
         {
-            HttpContext = new DefaultHttpContext { User = claimsPrincipal }
+            HttpContext = httpContext
         };
+        
+        _controller.TempData = tempData;
     }
 
     [Fact]
@@ -202,6 +210,10 @@ public class NoProjectReportControllerTests : IDisposable
         redirectResult.Should().NotBeNull();
         redirectResult!.ActionName.Should().Be("Index");
         redirectResult.ControllerName.Should().Be("TimeEntries");
+        
+        // Check TempData contains error message
+        _controller.TempData["ErrorMessage"].Should().NotBeNull();
+        _controller.TempData["ErrorMessage"].ToString().Should().Contain("profilu pracownika");
     }
 
     [Fact]
