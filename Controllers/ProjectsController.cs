@@ -24,10 +24,12 @@ namespace TimeTrackerApp.Controllers
 
         public async Task<IActionResult> Index()
         {
-            // pobieramy wszystkie projekty z pracownikami i wpisami czasu
+            // pobieramy wszystkie projekty z pracownikami, wpisami czasu i managerem
             var projekty = await _context.Projects
                 .Include(p => p.Employees)
                 .Include(p => p.TimeEntries)
+                .Include(p => p.Manager)
+                    .ThenInclude(m => m.User)
                 .ToListAsync();
             
             projekty = projekty.OrderBy(p => p.Name).ToList();
@@ -35,12 +37,13 @@ namespace TimeTrackerApp.Controllers
             return View(projekty);
         }
 
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
-            var pracownicy = _context.Employees
+            // pobieramy wszystkich aktywnych pracowników
+            var pracownicy = await _context.Employees
                 .Include(e => e.User)
                 .Where(e => e.IsActive)
-                .ToList();
+                .ToListAsync();
             
             // sortujemy alfabetycznie
             pracownicy = pracownicy
@@ -48,7 +51,19 @@ namespace TimeTrackerApp.Controllers
                 .ThenBy(e => e.User.FirstName)
                 .ToList();
 
+            // pobieramy tylko kierowników (Manager) dla pola opiekuna projektu
+            var kierownicy = await _context.Employees
+                .Include(e => e.User)
+                .Where(e => e.IsActive && e.User.Role == UserRole.Manager)
+                .ToListAsync();
+            
+            kierownicy = kierownicy
+                .OrderBy(e => e.User.LastName)
+                .ThenBy(e => e.User.FirstName)
+                .ToList();
+
             ViewBag.Employees = pracownicy;
+            ViewBag.Managers = kierownicy;
             return View();
         }
 
@@ -58,28 +73,41 @@ namespace TimeTrackerApp.Controllers
         {
             if (ModelState.IsValid)
             {
-                _context.Projects.Add(model);
-                await _context.SaveChangesAsync();
+                // sprawdzamy czy wybrany manager jest kierownikiem
+                var manager = await _context.Employees
+                    .Include(e => e.User)
+                    .FirstOrDefaultAsync(e => e.Id == model.ManagerId);
 
-                // przypisujemy wybranych pracowników do projektu
-                if (selectedEmployees != null && selectedEmployees.Length > 0)
+                if (manager == null || manager.User.Role != UserRole.Manager)
                 {
-                    var pracownicy = await _context.Employees
-                        .Where(e => selectedEmployees.Contains(e.Id))
-                        .ToListAsync();
+                    ModelState.AddModelError("ManagerId", "Opiekunem projektu może być tylko kierownik.");
+                }
+                else
+                {
+                    _context.Projects.Add(model);
+                    await _context.SaveChangesAsync();
 
-                    foreach (var pracownik in pracownicy)
+                    // przypisujemy wybranych pracowników do projektu
+                    if (selectedEmployees != null && selectedEmployees.Length > 0)
                     {
-                        pracownik.Projects.Add(model);
+                        var pracownicy = await _context.Employees
+                            .Where(e => selectedEmployees.Contains(e.Id))
+                            .ToListAsync();
+
+                        foreach (var pracownik in pracownicy)
+                        {
+                            pracownik.Projects.Add(model);
+                        }
+
+                        await _context.SaveChangesAsync();
                     }
 
-                    await _context.SaveChangesAsync();
+                    TempData["SuccessMessage"] = "Projekt został utworzony.";
+                    return RedirectToAction(nameof(Index));
                 }
-
-                TempData["SuccessMessage"] = "Projekt został utworzony.";
-                return RedirectToAction(nameof(Index));
             }
 
+            // jeśli wystąpił błąd - przeładuj listy
             var listaPracownikow = await _context.Employees
                 .Include(e => e.User)
                 .Where(e => e.IsActive)
@@ -89,7 +117,19 @@ namespace TimeTrackerApp.Controllers
                 .OrderBy(e => e.User.LastName)
                 .ThenBy(e => e.User.FirstName)
                 .ToList();
+
+            var kierownicy = await _context.Employees
+                .Include(e => e.User)
+                .Where(e => e.IsActive && e.User.Role == UserRole.Manager)
+                .ToListAsync();
+            
+            kierownicy = kierownicy
+                .OrderBy(e => e.User.LastName)
+                .ThenBy(e => e.User.FirstName)
+                .ToList();
+
             ViewBag.Employees = listaPracownikow;
+            ViewBag.Managers = kierownicy;
             return View(model);
         }
 
@@ -97,6 +137,8 @@ namespace TimeTrackerApp.Controllers
         {
             var projekt = await _context.Projects
                 .Include(p => p.Employees)
+                .Include(p => p.Manager)
+                    .ThenInclude(m => m.User)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (projekt == null)
@@ -112,7 +154,18 @@ namespace TimeTrackerApp.Controllers
                 .ThenBy(e => e.User.FirstName)
                 .ToList();
 
+            var kierownicy = await _context.Employees
+                .Include(e => e.User)
+                .Where(e => e.IsActive && e.User.Role == UserRole.Manager)
+                .ToListAsync();
+            
+            kierownicy = kierownicy
+                .OrderBy(e => e.User.LastName)
+                .ThenBy(e => e.User.FirstName)
+                .ToList();
+
             ViewBag.Employees = pracownicy;
+            ViewBag.Managers = kierownicy;
             return View(projekt);
         }
 
@@ -125,39 +178,53 @@ namespace TimeTrackerApp.Controllers
 
             if (ModelState.IsValid)
             {
-                var projekt = await _context.Projects
-                    .Include(p => p.Employees)
-                    .FirstOrDefaultAsync(p => p.Id == id);
+                // sprawdzamy czy wybrany manager jest kierownikiem
+                var manager = await _context.Employees
+                    .Include(e => e.User)
+                    .FirstOrDefaultAsync(e => e.Id == model.ManagerId);
 
-                if (projekt == null)
-                    return NotFound();
-
-                // aktualizujemy dane projektu
-                projekt.Name = model.Name;
-                projekt.Description = model.Description;
-                projekt.HoursBudget = model.HoursBudget;
-
-                // aktualizujemy przypisanych pracowników
-                projekt.Employees.Clear();
-
-                if (selectedEmployees != null && selectedEmployees.Length > 0)
+                if (manager == null || manager.User.Role != UserRole.Manager)
                 {
-                    var pracownicy = await _context.Employees
-                        .Where(e => selectedEmployees.Contains(e.Id))
-                        .ToListAsync();
-
-                    foreach (var pracownik in pracownicy)
-                    {
-                        projekt.Employees.Add(pracownik);
-                    }
+                    ModelState.AddModelError("ManagerId", "Opiekunem projektu może być tylko kierownik.");
                 }
+                else
+                {
+                    var projekt = await _context.Projects
+                        .Include(p => p.Employees)
+                        .FirstOrDefaultAsync(p => p.Id == id);
 
-                await _context.SaveChangesAsync();
+                    if (projekt == null)
+                        return NotFound();
 
-                TempData["SuccessMessage"] = "Projekt został zaktualizowany.";
-                return RedirectToAction(nameof(Index));
+                    // aktualizujemy dane projektu
+                    projekt.Name = model.Name;
+                    projekt.Description = model.Description;
+                    projekt.HoursBudget = model.HoursBudget;
+                    projekt.ManagerId = model.ManagerId;
+
+                    // aktualizujemy przypisanych pracowników
+                    projekt.Employees.Clear();
+
+                    if (selectedEmployees != null && selectedEmployees.Length > 0)
+                    {
+                        var pracownicy = await _context.Employees
+                            .Where(e => selectedEmployees.Contains(e.Id))
+                            .ToListAsync();
+
+                        foreach (var pracownik in pracownicy)
+                        {
+                            projekt.Employees.Add(pracownik);
+                        }
+                    }
+
+                    await _context.SaveChangesAsync();
+
+                    TempData["SuccessMessage"] = "Projekt został zaktualizowany.";
+                    return RedirectToAction(nameof(Index));
+                }
             }
 
+            // jeśli wystąpił błąd - przeładuj listy
             var listaPracownikow = await _context.Employees
                 .Include(e => e.User)
                 .Where(e => e.IsActive)
@@ -167,8 +234,28 @@ namespace TimeTrackerApp.Controllers
                 .OrderBy(e => e.User.LastName)
                 .ThenBy(e => e.User.FirstName)
                 .ToList();
+
+            var kierownicy = await _context.Employees
+                .Include(e => e.User)
+                .Where(e => e.IsActive && e.User.Role == UserRole.Manager)
+                .ToListAsync();
+            
+            kierownicy = kierownicy
+                .OrderBy(e => e.User.LastName)
+                .ThenBy(e => e.User.FirstName)
+                .ToList();
+
             ViewBag.Employees = listaPracownikow;
-            return View(model);
+            ViewBag.Managers = kierownicy;
+            
+            // przeładuj projekt z bazy dla widoku
+            var projektDoWidoku = await _context.Projects
+                .Include(p => p.Employees)
+                .Include(p => p.Manager)
+                    .ThenInclude(m => m.User)
+                .FirstOrDefaultAsync(p => p.Id == id);
+            
+            return View(projektDoWidoku);
         }
 
         [HttpPost]
