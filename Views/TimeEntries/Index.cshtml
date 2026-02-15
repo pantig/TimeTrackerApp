@@ -32,14 +32,31 @@
         <tbody>
             @foreach (var entry in Model)
             {
-                <tr>
+                var hasNoProject = entry.ProjectId == null;
+                <tr style="@(hasNoProject ? "border-left: 3px solid var(--warning-color);" : "")">
                     <td>@entry.EntryDate.ToString("yyyy-MM-dd")</td>
                     <td><strong>@entry.Employee.User.LastName @entry.Employee.User.FirstName</strong></td>
-                    <td>@(entry.Project?.Name ?? "<span style='color: var(--text-tertiary);'>(brak)</span>")</td>
+                    <td>
+                        @if (entry.Project != null)
+                        {
+                            @entry.Project.Name
+                        }
+                        else
+                        {
+                            <span style="color: var(--text-tertiary);">(brak)</span>
+                        }
+                    </td>
                     <td>@entry.StartTime.ToString(@"hh\:mm") – @entry.EndTime.ToString(@"hh\:mm")</td>
                     <td><strong>@entry.TotalHours.ToString("0.0")h</strong></td>
                     <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        @(string.IsNullOrEmpty(entry.Description) ? "<span style='color: var(--text-tertiary);'>(brak opisu)</span>" : entry.Description)
+                        @if (string.IsNullOrEmpty(entry.Description))
+                        {
+                            <span style="color: var(--text-tertiary);">(brak opisu)</span>
+                        }
+                        else
+                        {
+                            @entry.Description
+                        }
                     </td>
                     <td>
                         <span style="font-size: 0.8125rem; color: var(--text-tertiary);">
