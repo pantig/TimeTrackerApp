@@ -54,7 +54,7 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-// ✅ FIXED: Apply migrations (EF Core + Custom SQL)
+// ✅ FIXED: Apply migrations + Seed data
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -64,6 +64,8 @@ using (var scope = app.Services.CreateScope())
     {
         if (db.Database.IsRelational())
         {
+            Console.WriteLine("[INFO] Initializing database...");
+            
             // Ensure database is created
             db.Database.EnsureCreated();
             
@@ -77,9 +79,21 @@ using (var scope = app.Services.CreateScope())
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error running migrations: {ex.Message}");
+                    Console.WriteLine($"[ERROR] Error running migrations: {ex.Message}");
                     throw;
                 }
+            }
+            
+            // ✅ FIXED: Initialize seed data
+            try
+            {
+                DbInitializer.Initialize(db);
+                Console.WriteLine("[SUCCESS] Database initialization completed.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Error initializing seed data: {ex.Message}");
+                throw;
             }
         }
     }
