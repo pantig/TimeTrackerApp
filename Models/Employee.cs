@@ -19,10 +19,6 @@ namespace TimeTrackerApp.Models
 
         public bool IsActive { get; set; } = true;
 
-        // Stawka godzinowa dla obliczania wynagrodzeń
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal? HourlyRate { get; set; }
-
         // Klucz obcy
         [ForeignKey("User")]
         public int UserId { get; set; }

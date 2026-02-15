@@ -34,10 +34,6 @@ namespace TimeTrackerApp.Models
         public int CreatedBy { get; set; }
         public virtual User CreatedByUser { get; set; } = null!;
 
-        // Pola związane z zatwierdzaniem
-        public int? ApprovedBy { get; set; }
-        public DateTime? ApprovedAt { get; set; }
-
         // Właściwość obliczona
         [NotMapped]
         public decimal TotalHours

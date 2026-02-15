@@ -43,37 +43,22 @@ namespace TimeTrackerApp.Services
             return entries.Sum(e => e.TotalHours);
         }
 
-        public async Task<decimal> GetTotalEarningsAsync(int employeeId, DateTime from, DateTime to)
+        public Task<decimal> GetTotalEarningsAsync(int employeeId, DateTime from, DateTime to)
         {
-            var employee = await _context.Employees.FindAsync(employeeId);
-            if (employee == null || !employee.HourlyRate.HasValue)
-                return 0;
-
-            var totalHours = await GetTotalHoursAsync(employeeId, from, to);
-            return totalHours * employee.HourlyRate.Value;
+            // Aplikacja nie obsługuje stawek godzinowych
+            return Task.FromResult(0m);
         }
 
-        public async Task<List<TimeEntry>> GetUnapprovedEntriesAsync()
+        public Task<List<TimeEntry>> GetUnapprovedEntriesAsync()
         {
-            return await _context.TimeEntries
-                .Include(e => e.Employee)
-                    .ThenInclude(e => e.User)
-                .Include(e => e.Project)
-                .Where(e => e.ApprovedBy == null)
-                .OrderBy(e => e.EntryDate)
-                .ThenBy(e => e.StartTime)
-                .ToListAsync();
+            // Aplikacja nie wymaga zatwierdzania wpisów
+            return Task.FromResult(new List<TimeEntry>());
         }
 
-        public async Task ApproveTimeEntryAsync(int entryId)
+        public Task ApproveTimeEntryAsync(int entryId)
         {
-            var entry = await _context.TimeEntries.FindAsync(entryId);
-            if (entry != null)
-            {
-                entry.ApprovedBy = 1; // TODO: Use actual approver user ID
-                entry.ApprovedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-            }
+            // Aplikacja nie wymaga zatwierdzania wpisów
+            return Task.CompletedTask;
         }
 
         public async Task UpsertDailyHoursAsync(int employeeId, DateTime date, decimal hours, int? projectId, string? description)
@@ -88,7 +73,7 @@ namespace TimeTrackerApp.Services
                 existingEntry.StartTime = TimeSpan.Zero;
                 existingEntry.EndTime = TimeSpan.FromHours((double)hours);
                 existingEntry.ProjectId = projectId;
-                existingEntry.Description = description;
+                existingEntry.Description = description ?? string.Empty;
             }
             else
             {
@@ -146,7 +131,6 @@ namespace TimeTrackerApp.Services
 
         public Task<bool> CanDeleteAsync(int entryId, int currentUserId)
         {
-            // Synchronous operation - just return completed task
             var entry = _context.TimeEntries.Find(entryId);
             var result = entry != null && entry.CreatedBy == currentUserId;
             return Task.FromResult(result);
@@ -154,7 +138,6 @@ namespace TimeTrackerApp.Services
 
         public Task<bool> CanEditAsync(int entryId, int currentUserId)
         {
-            // Synchronous operation - just return completed task
             var entry = _context.TimeEntries.Find(entryId);
             var result = entry != null && entry.CreatedBy == currentUserId;
             return Task.FromResult(result);
