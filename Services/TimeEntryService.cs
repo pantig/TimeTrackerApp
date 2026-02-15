@@ -1,8 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TimeTrackerApp.Data;
 using TimeTrackerApp.Models;
 
@@ -17,116 +13,114 @@ namespace TimeTrackerApp.Services
             _context = context;
         }
 
-        public async Task<List<TimeEntry>> GetTimeEntriesForEmployeeAsync(int employeeId, DateTime from, DateTime to)
+        public async Task<bool> HasOverlapAsync(int employeeId, DateTime date, TimeSpan startTime, TimeSpan endTime, int? excludeEntryId = null)
         {
-            return await _context.TimeEntries
-                .Where(t => t.EmployeeId == employeeId && t.EntryDate >= from && t.EntryDate <= to)
-                .Include(t => t.Employee)
-                    .ThenInclude(e => e.User)
-                .Include(t => t.Project)
-                .OrderByDescending(t => t.EntryDate)
+            var existingEntries = await _context.TimeEntries
+                .Where(e => e.EmployeeId == employeeId && e.EntryDate.Date == date.Date)
                 .ToListAsync();
-        }
 
-        public async Task<List<TimeEntry>> GetTimeEntriesForProjectAsync(int projectId)
-        {
-            return await _context.TimeEntries
-                .Where(t => t.ProjectId == projectId)
-                .Include(t => t.Employee)
-                    .ThenInclude(e => e.User)
-                .OrderByDescending(t => t.EntryDate)
-                .ToListAsync();
-        }
-
-        public async Task<decimal> GetTotalHoursAsync(int employeeId, DateTime from, DateTime to)
-        {
-            return await _context.TimeEntries
-                .Where(t => t.EmployeeId == employeeId && t.EntryDate >= from && t.EntryDate <= to)
-                .SumAsync(t => (decimal)(t.EndTime - t.StartTime).TotalHours);
-        }
-
-        public async Task<decimal> GetTotalEarningsAsync(int employeeId, DateTime from, DateTime to)
-        {
-            // Feature removed - no salary calculations
-            return 0;
-        }
-
-        public async Task<List<TimeEntry>> GetUnapprovedEntriesAsync()
-        {
-            // Feature removed - no approval workflow
-            return new List<TimeEntry>();
-        }
-
-        public async Task ApproveTimeEntryAsync(int entryId)
-        {
-            // Feature removed - no approval workflow
-            await Task.CompletedTask;
-        }
-
-        public async Task UpsertDailyHoursAsync(int employeeId, DateTime date, decimal hours, int? projectId, string? description)
-        {
-            // If hours == 0, remove any existing entries for that day
-            var dayStart = date.Date;
-            var dayEnd = date.Date.AddDays(1).AddTicks(-1);
-
-            var existing = await _context.TimeEntries
-                .Where(t => t.EmployeeId == employeeId && t.EntryDate >= dayStart && t.EntryDate <= dayEnd)
-                .ToListAsync();
-            
-            existing = System.Linq.Enumerable.OrderBy(existing, t => t.Id).ToList();
-
-            if (hours <= 0)
+            if (excludeEntryId.HasValue)
             {
-                if (existing.Count > 0)
-                {
-                    foreach (var item in existing)
-                    {
-                        _context.TimeEntries.Remove(item);
-                    }
-                    await _context.SaveChangesAsync();
-                }
-                return;
+                existingEntries = existingEntries.Where(e => e.Id != excludeEntryId.Value).ToList();
             }
 
-            // Represent daily hours as a single entry: 09:00 -> 09:00 + hours
-            var start = new TimeSpan(9, 0, 0);
-            var end = start.Add(TimeSpan.FromHours((double)hours));
-
-            var entry = existing.FirstOrDefault();
-            if (entry == null)
+            foreach (var entry in existingEntries)
             {
-                entry = new TimeEntry
+                // Sprawdzamy czy nowy wpis nachodzi na istniejący
+                if ((startTime >= entry.StartTime && startTime < entry.EndTime) ||
+                    (endTime > entry.StartTime && endTime <= entry.EndTime) ||
+                    (startTime <= entry.StartTime && endTime >= entry.EndTime))
                 {
-                    EmployeeId = employeeId,
-                    EntryDate = date.Date,
-                    StartTime = start,
-                    EndTime = end,
-                    ProjectId = projectId,
-                    Description = description,
-                    CreatedBy = employeeId
-                };
-                _context.TimeEntries.Add(entry);
-            }
-            else
-            {
-                entry.EntryDate = date.Date;
-                entry.StartTime = start;
-                entry.EndTime = end;
-                entry.ProjectId = projectId;
-                entry.Description = description;
-            }
-
-            // Remove duplicates for the day (if any)
-            if (existing.Count > 1)
-            {
-                var duplicates = existing.Skip(1).ToList();
-                foreach (var dup in duplicates)
-                {
-                    _context.TimeEntries.Remove(dup);
+                    return true;
                 }
             }
 
-            await _context.SaveChangesAsync();
+            return false;
+        }
+
+        public async Task<decimal> GetTotalHoursForDayAsync(int employeeId, DateTime date)
+        {
+            var entries = await _context.TimeEntries
+                .Where(e => e.EmployeeId == employeeId && e.EntryDate.Date == date.Date)
+                .ToListAsync();
+
+            return entries.Sum(e => e.TotalHours);
+        }
+
+        public Task<bool> CanDeleteAsync(int entryId, int currentUserId)
+        {
+            // Synchronous operation - just return completed task
+            var entry = _context.TimeEntries.Find(entryId);
+            var result = entry != null && entry.CreatedBy == currentUserId;
+            return Task.FromResult(result);
+        }
+
+        public Task<bool> CanEditAsync(int entryId, int currentUserId)
+        {
+            // Synchronous operation - just return completed task
+            var entry = _context.TimeEntries.Find(entryId);
+            var result = entry != null && entry.CreatedBy == currentUserId;
+            return Task.FromResult(result);
+        }
+
+        public async Task<List<TimeEntry>> GetEntriesForEmployeeAsync(int employeeId, DateTime startDate, DateTime endDate)
+        {
+            return await _context.TimeEntries
+                .Include(e => e.Project)
+                .Include(e => e.Employee)
+                    .ThenInclude(e => e.User)
+                .Where(e => e.EmployeeId == employeeId && e.EntryDate >= startDate && e.EntryDate <= endDate)
+                .ToListAsync();
+        }
+
+        public async Task<List<TimeEntry>> GetEntriesForProjectAsync(int projectId, DateTime startDate, DateTime endDate)
+        {
+            return await _context.TimeEntries
+                .Include(e => e.Employee)
+                    .ThenInclude(e => e.User)
+                .Where(e => e.ProjectId == projectId && e.EntryDate >= startDate && e.EntryDate <= endDate)
+                .ToListAsync();
+        }
+
+        public async Task<bool> ValidateTimeEntryAsync(TimeEntry entry)
+        {
+            if (entry.StartTime >= entry.EndTime)
+                return false;
+
+            if (entry.TotalHours > 24)
+                return false;
+
+            // Sprawdzamy nakładanie się wpisów
+            bool hasOverlap = await HasOverlapAsync(
+                entry.EmployeeId,
+                entry.EntryDate,
+                entry.StartTime,
+                entry.EndTime,
+                entry.Id > 0 ? entry.Id : null
+            );
+
+            return !hasOverlap;
+        }
+
+        public async Task<Dictionary<DateTime, DayMarker?>> GetDayMarkersForMonthAsync(int employeeId, int year, int month)
+        {
+            var startDate = new DateTime(year, month, 1);
+            var endDate = startDate.AddMonths(1).AddDays(-1);
+
+            var markers = await _context.DayMarkers
+                .Where(d => d.EmployeeId == employeeId && d.Date >= startDate && d.Date <= endDate)
+                .ToListAsync();
+
+            var result = new Dictionary<DateTime, DayMarker?>();
+            var daysInMonth = DateTime.DaysInMonth(year, month);
+
+            for (int day = 1; day <= daysInMonth; day++)
+            {
+                var date = new DateTime(year, month, day);
+                result[date] = markers.FirstOrDefault(m => m.Date.Date == date);
+            }
+
+            return result;
         }
     }
 }

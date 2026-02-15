@@ -23,7 +23,10 @@ namespace TimeTrackerApp.Controllers
         // GET: /NoProjectReport/MyEntries - Pracownik widzi swoje wpisy bez projektu
         public async Task<IActionResult> MyEntries()
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Forbid();
+            
+            var userId = int.Parse(userIdClaim.Value);
             var employee = await _context.Employees
                 .Include(e => e.User)
                 .FirstOrDefaultAsync(e => e.UserId == userId);
@@ -117,8 +120,13 @@ namespace TimeTrackerApp.Controllers
                 return Json(new { success = false, message = "Wpis nie znaleziony" });
             }
 
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Json(new { success = false, message = "Brak autoryzacji" });
+            
+            var userId = int.Parse(userIdClaim.Value);
             var currentUser = await _context.Users.FindAsync(userId);
+            if (currentUser == null) return Json(new { success = false, message = "Użytkownik nie znaleziony" });
+            
             var employee = await _context.Employees
                 .Include(e => e.Projects)
                 .FirstOrDefaultAsync(e => e.UserId == userId);
