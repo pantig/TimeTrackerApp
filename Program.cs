@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TimeTrackerApp.Data;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using TimeTrackerApp.Services;
+using TimeTrackerApp.Migrations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,7 +54,7 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-// Apply migrations automatically (only for relational databases)
+// ✅ FIXED: Apply migrations (EF Core + Custom SQL)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -63,7 +64,23 @@ using (var scope = app.Services.CreateScope())
     {
         if (db.Database.IsRelational())
         {
-            db.Database.Migrate();
+            // Ensure database is created
+            db.Database.EnsureCreated();
+            
+            // Run custom SQL migrations
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+            if (!string.IsNullOrEmpty(connectionString))
+            {
+                try
+                {
+                    MigrationRunner.RunMigrations(connectionString);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error running migrations: {ex.Message}");
+                    throw;
+                }
+            }
         }
     }
     else
