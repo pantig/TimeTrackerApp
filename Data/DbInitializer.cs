@@ -9,7 +9,7 @@ namespace TimeTrackerApp.Data
             if (context.Users.Any())
                 return;
 
-            // Hasła захезані (w wersji produkcyjnej użyć BCrypt)
+            // 1. USERS - tworzymy użytkowników
             var adminUser = new User
             {
                 Email = "admin@example.com",
@@ -43,38 +43,75 @@ namespace TimeTrackerApp.Data
             context.Users.AddRange(adminUser, managerUser, employeeUser);
             context.SaveChanges();
 
-            // Projektów
-            var projects = new List<Project>
-            {
-                new Project { Name = "Portal E-commerce", Description = "Budowa platformy sprzedażowej", Status = ProjectStatus.Active, HoursBudget = 160 },
-                new Project { Name = "System CRM", Description = "Zarządzanie relacjami z klientami", Status = ProjectStatus.Active, HoursBudget = 240 },
-                new Project { Name = "Modernizacja IT", Description = "Aktualizacja infrastruktury", Status = ProjectStatus.Planning, HoursBudget = 80 }
-            };
-
-            context.Projects.AddRange(projects);
-            context.SaveChanges();
-
-            // Pracownicy
+            // 2. EMPLOYEES - tworzymy pracowników (PRZED projektami!)
             var employees = new List<Employee>
             {
                 new Employee
                 {
                     UserId = employeeUser.Id,
                     Position = "Developer",
-                    Department = "IT"
+                    Department = "IT",
+                    HireDate = DateTime.Today.AddYears(-1),
+                    IsActive = true
                 },
                 new Employee
                 {
                     UserId = managerUser.Id,
                     Position = "Project Manager",
-                    Department = "Management"
+                    Department = "Management",
+                    HireDate = DateTime.Today.AddYears(-2),
+                    IsActive = true
                 }
             };
 
             context.Employees.AddRange(employees);
             context.SaveChanges();
 
-            // Wpisy czasu
+            // 3. PROJECTS - teraz możemy przypisać ManagerId
+            var projects = new List<Project>
+            {
+                new Project 
+                { 
+                    Name = "Portal E-commerce", 
+                    Description = "Budowa platformy sprzedażowej", 
+                    Status = ProjectStatus.Active, 
+                    HoursBudget = 160,
+                    StartDate = DateTime.Today.AddMonths(-2),
+                    ManagerId = employees[1].Id,  // Jan Kierownik
+                    IsActive = true
+                },
+                new Project 
+                { 
+                    Name = "System CRM", 
+                    Description = "Zarządzanie relacjami z klientami", 
+                    Status = ProjectStatus.Active, 
+                    HoursBudget = 240,
+                    StartDate = DateTime.Today.AddMonths(-3),
+                    ManagerId = employees[1].Id,  // Jan Kierownik
+                    IsActive = true
+                },
+                new Project 
+                { 
+                    Name = "Modernizacja IT", 
+                    Description = "Aktualizacja infrastruktury", 
+                    Status = ProjectStatus.Planning, 
+                    HoursBudget = 80,
+                    StartDate = DateTime.Today.AddMonths(-1),
+                    ManagerId = employees[1].Id,  // Jan Kierownik
+                    IsActive = true
+                }
+            };
+
+            context.Projects.AddRange(projects);
+            context.SaveChanges();
+
+            // 4. PRZYPISANIE PRACOWNIKÓW DO PROJEKTÓW
+            // Piotr Pracownik pracuje w Portal E-commerce i System CRM
+            employees[0].Projects.Add(projects[0]);
+            employees[0].Projects.Add(projects[1]);
+            context.SaveChanges();
+
+            // 5. TIME ENTRIES - wpisy czasu
             var now = DateTime.UtcNow;
             var timeEntries = new List<TimeEntry>
             {
@@ -86,7 +123,8 @@ namespace TimeTrackerApp.Data
                     StartTime = new TimeSpan(9, 0, 0),
                     EndTime = new TimeSpan(17, 0, 0),
                     Description = "Implementacja widoku głównego",
-                    CreatedBy = employeeUser.Id
+                    CreatedBy = employeeUser.Id,
+                    CreatedAt = DateTime.UtcNow
                 },
                 new TimeEntry
                 {
@@ -96,7 +134,8 @@ namespace TimeTrackerApp.Data
                     StartTime = new TimeSpan(8, 30, 0),
                     EndTime = new TimeSpan(17, 30, 0),
                     Description = "Spotkanie zespołu",
-                    CreatedBy = managerUser.Id
+                    CreatedBy = managerUser.Id,
+                    CreatedAt = DateTime.UtcNow
                 }
             };
 

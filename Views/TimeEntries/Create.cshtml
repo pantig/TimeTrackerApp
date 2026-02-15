@@ -13,14 +13,23 @@
 
         <div class="form-group">
             <label asp-for="EmployeeId">Pracownik</label>
-            <select asp-for="EmployeeId" class="form-control" asp-items="@(new SelectList(Model.Employees, "Id", "EmployeeNumber"))"></select>
+            <select asp-for="EmployeeId" class="form-control">
+                @foreach (var employee in Model.Employees)
+                {
+                    <option value="@employee.Id">@employee.User.FirstName @employee.User.LastName (@employee.Position)</option>
+                }
+            </select>
             <span asp-validation-for="EmployeeId" class="error"></span>
         </div>
 
         <div class="form-group">
             <label asp-for="ProjectId">Projekt</label>
-            <select asp-for="ProjectId" class="form-control" asp-items="@(new SelectList(Model.Projects, "Id", "Name"))">
+            <select asp-for="ProjectId" class="form-control">
                 <option value="">-- Brak projektu --</option>
+                @foreach (var project in Model.Projects)
+                {
+                    <option value="@project.Id">@project.Name</option>
+                }
             </select>
             <span asp-validation-for="ProjectId" class="error"></span>
         </div>
@@ -57,3 +66,7 @@
         </div>
     </form>
 </div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

@@ -26,6 +26,12 @@ namespace TimeTrackerApp.Models
         // Budżet godzinowy projektu
         public decimal? HoursBudget { get; set; }
 
+        // Opiekun projektu - tylko Manager
+        [Required(ErrorMessage = "Opiekun projektu jest wymagany")]
+        [ForeignKey("Manager")]
+        public int ManagerId { get; set; }
+        public virtual Employee Manager { get; set; }
+
         // Nawigacja
         public virtual ICollection<TimeEntry> TimeEntries { get; set; } = new List<TimeEntry>();
         public virtual ICollection<Employee> Employees { get; set; } = new List<Employee>();

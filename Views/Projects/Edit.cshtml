@@ -2,19 +2,21 @@
 
 @{
     ViewData["Title"] = "Edytuj projekt";
-    var allEmployees = ViewBag.AllEmployees as List<TimeTrackerApp.Models.Employee>;
+    var allEmployees = ViewBag.Employees as List<TimeTrackerApp.Models.Employee>;
+    var managers = ViewBag.Managers as List<TimeTrackerApp.Models.Employee>;
 }
 
 <div style="margin-top: 2rem;">
     <h2>Edytuj projekt</h2>
 
-    <form method="post" asp-action="Edit" class="card">
-        <input type="hidden" asp-for="Id" />
+    <form method="post" asp-action="Edit" asp-route-id="@Model.Id" class="card">
         <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 
+        <input type="hidden" asp-for="Id" />
+
         <div class="form-group">
-            <label asp-for="Name">Nazwa projektu</label>
-            <input asp-for="Name" class="form-control" placeholder="Nazwa projektu" />
+            <label asp-for="Name">Nazwa projektu *</label>
+            <input asp-for="Name" class="form-control" placeholder="Nazwa projektu" required />
             <span asp-validation-for="Name" class="text-danger"></span>
         </div>
 
@@ -24,9 +26,24 @@
             <span asp-validation-for="Description" class="text-danger"></span>
         </div>
 
+        <div class="form-group">
+            <label asp-for="ManagerId">Opiekun projektu (Kierownik) *</label>
+            <select asp-for="ManagerId" class="form-control" required>
+                <option value="">-- Wybierz kierownika --</option>
+                @if (managers != null && managers.Any())
+                {
+                    @foreach (var manager in managers)
+                    {
+                        <option value="@manager.Id" selected="@(Model.ManagerId == manager.Id)">@manager.User.FirstName @manager.User.LastName (@manager.Position)</option>
+                    }
+                }
+            </select>
+            <span asp-validation-for="ManagerId" class="text-danger"></span>
+        </div>
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
             <div class="form-group">
-                <label asp-for="Status">Status</label>
+                <label asp-for="Status">Status *</label>
                 <select asp-for="Status" class="form-control">
                     <option value="0">Planowanie</option>
                     <option value="1">Aktywny</option>
@@ -45,8 +62,8 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
             <div class="form-group">
-                <label asp-for="StartDate">Data rozpoczęcia</label>
-                <input asp-for="StartDate" type="date" class="form-control" />
+                <label asp-for="StartDate">Data rozpoczęcia *</label>
+                <input asp-for="StartDate" type="date" class="form-control" required />
                 <span asp-validation-for="StartDate" class="text-danger"></span>
             </div>
 
@@ -64,11 +81,11 @@
                 {
                     @foreach (var employee in allEmployees)
                     {
-                        var isAssigned = Model.Employees.Any(e => e.Id == employee.Id);
+                        var isChecked = Model.Employees?.Any(e => e.Id == employee.Id) ?? false;
                         <div style="margin-bottom: 0.5rem;">
                             <label style="display: flex; align-items: center; cursor: pointer;">
                                 <input type="checkbox" name="selectedEmployees" value="@employee.Id" 
-                                       checked="@isAssigned" style="margin-right: 0.5rem;" />
+                                       @(isChecked ? "checked" : "") style="margin-right: 0.5rem;" />
                                 <span>@employee.User.FirstName @employee.User.LastName (@employee.Position)</span>
                             </label>
                         </div>

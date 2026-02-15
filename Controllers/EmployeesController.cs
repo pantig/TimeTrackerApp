@@ -25,48 +25,49 @@ namespace TimeTrackerApp.Controllers
 
         public async Task<IActionResult> Index()
         {
-            var employees = await _context.Employees
+            // pobieramy wszystkich aktywnych pracowników z bazy
+            var pracownicy = await _context.Employees
                 .Include(e => e.User)
                 .Where(e => e.IsActive)
                 .ToListAsync();
             
-            employees = employees
+            // sortujemy alfabetycznie po nazwisku
+            pracownicy = pracownicy
                 .OrderBy(e => e.User.LastName)
                 .ThenBy(e => e.User.FirstName)
                 .ToList();
 
-            return View(employees);
+            return View(pracownicy);
         }
 
         public async Task<IActionResult> Details(int id)
         {
-            var employee = await _context.Employees
+            var pracownik = await _context.Employees
                 .Include(e => e.User)
                 .Include(e => e.TimeEntries)
+                .Include(e => e.Projects)  // dodajemy ładowanie projektów!
                 .FirstOrDefaultAsync(e => e.Id == id);
 
-            if (employee == null)
+            if (pracownik == null)
                 return NotFound();
 
-            return View(employee);
+            return View(pracownik);
         }
 
-        // GET: Employees/Create
         public IActionResult Create()
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var currentUser = _context.Users.Find(userId);
+            var aktualnyUzytkownik = _context.Users.Find(userId);
 
+            // domyślnie ustawiamy rolę Employee
             var model = new CreateEmployeeViewModel
             {
-                // For managers, default to Employee role
-                Role = currentUser.Role == UserRole.Manager ? UserRole.Employee : UserRole.Employee
+                Role = UserRole.Employee
             };
 
             return View(model);
         }
 
-        // POST: Employees/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(CreateEmployeeViewModel model)
@@ -77,30 +78,31 @@ namespace TimeTrackerApp.Controllers
             }
 
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var currentUser = await _context.Users.FindAsync(userId);
+            var aktualnyUzytkownik = await _context.Users.FindAsync(userId);
 
-            // Authorization check: Manager can only create Employees, Admin can create Employees and Managers
-            if (currentUser.Role == UserRole.Manager && model.Role != UserRole.Employee)
+            // sprawdzamy uprawnienia - kierownik może dodać tylko pracowników
+            if (aktualnyUzytkownik.Role == UserRole.Manager && model.Role != UserRole.Employee)
             {
                 ModelState.AddModelError("", "Kierownik może dodawać tylko pracowników.");
                 return View(model);
             }
 
-            if (currentUser.Role != UserRole.Admin && model.Role == UserRole.Admin)
+            // tylko admin może dodawać innych adminów
+            if (aktualnyUzytkownik.Role != UserRole.Admin && model.Role == UserRole.Admin)
             {
                 ModelState.AddModelError("", "Nie masz uprawnień do dodawania administratorów.");
                 return View(model);
             }
 
-            // Check if email already exists
+            // sprawdzamy czy email już istnieje
             if (await _context.Users.AnyAsync(u => u.Email == model.Email))
             {
                 ModelState.AddModelError("Email", "Użytkownik z tym adresem email już istnieje.");
                 return View(model);
             }
 
-            // Create User
-            var user = new User
+            // tworzymy nowego użytkownika
+            var nowyUzytkownik = new User
             {
                 Email = model.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password),
@@ -111,52 +113,50 @@ namespace TimeTrackerApp.Controllers
                 IsActive = true
             };
 
-            _context.Users.Add(user);
+            _context.Users.Add(nowyUzytkownik);
             await _context.SaveChangesAsync();
 
-            // Create Employee profile
-            var employee = new Employee
+            // tworzymy profil pracownika
+            var nowyPracownik = new Employee
             {
-                UserId = user.Id,
+                UserId = nowyUzytkownik.Id,
                 Position = model.Position,
                 Department = model.Department,
                 HireDate = model.HireDate ?? DateTime.Today,
                 IsActive = true
             };
 
-            _context.Employees.Add(employee);
+            _context.Employees.Add(nowyPracownik);
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = string.Format("Pracownik {0} {1} został pomyślnie dodany.", user.FirstName, user.LastName);
+            TempData["SuccessMessage"] = $"Pracownik {nowyUzytkownik.FirstName} {nowyUzytkownik.LastName} został pomyślnie dodany.";
             return RedirectToAction(nameof(Index));
         }
 
-        // GET: Employees/Edit/5
         public async Task<IActionResult> Edit(int id)
         {
-            var employee = await _context.Employees
+            var pracownik = await _context.Employees
                 .Include(e => e.User)
                 .FirstOrDefaultAsync(e => e.Id == id);
 
-            if (employee == null)
+            if (pracownik == null)
                 return NotFound();
 
             var model = new EditEmployeeViewModel
             {
-                Id = employee.Id,
-                Email = employee.User.Email,
-                FirstName = employee.User.FirstName,
-                LastName = employee.User.LastName,
-                Position = employee.Position,
-                Department = employee.Department,
-                HireDate = employee.HireDate,
-                IsActive = employee.IsActive
+                Id = pracownik.Id,
+                Email = pracownik.User.Email,
+                FirstName = pracownik.User.FirstName,
+                LastName = pracownik.User.LastName,
+                Position = pracownik.Position,
+                Department = pracownik.Department,
+                HireDate = pracownik.HireDate,
+                IsActive = pracownik.IsActive
             };
 
             return View(model);
         }
 
-        // POST: Employees/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, EditEmployeeViewModel model)
@@ -167,23 +167,23 @@ namespace TimeTrackerApp.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
-            var employee = await _context.Employees
+            var pracownik = await _context.Employees
                 .Include(e => e.User)
                 .FirstOrDefaultAsync(e => e.Id == id);
 
-            if (employee == null)
+            if (pracownik == null)
                 return NotFound();
 
-            // Update User
-            employee.User.FirstName = model.FirstName;
-            employee.User.LastName = model.LastName;
-            employee.User.Email = model.Email;
+            // aktualizujemy dane użytkownika
+            pracownik.User.FirstName = model.FirstName;
+            pracownik.User.LastName = model.LastName;
+            pracownik.User.Email = model.Email;
 
-            // Update Employee
-            employee.Position = model.Position;
-            employee.Department = model.Department;
-            employee.HireDate = model.HireDate;
-            employee.IsActive = model.IsActive;
+            // aktualizujemy dane pracownika
+            pracownik.Position = model.Position;
+            pracownik.Department = model.Department;
+            pracownik.HireDate = model.HireDate;
+            pracownik.IsActive = model.IsActive;
 
             await _context.SaveChangesAsync();
 
@@ -191,20 +191,20 @@ namespace TimeTrackerApp.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // POST: Employees/Deactivate/5
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Deactivate(int id)
         {
-            var employee = await _context.Employees
+            var pracownik = await _context.Employees
                 .Include(e => e.User)
                 .FirstOrDefaultAsync(e => e.Id == id);
 
-            if (employee == null)
+            if (pracownik == null)
                 return NotFound();
 
-            employee.IsActive = false;
-            employee.User.IsActive = false;
+            // dezaktywujemy pracownika i jego konto
+            pracownik.IsActive = false;
+            pracownik.User.IsActive = false;
 
             await _context.SaveChangesAsync();
 

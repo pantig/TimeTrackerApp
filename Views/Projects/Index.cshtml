@@ -17,6 +17,7 @@
         <thead>
             <tr>
                 <th>Nazwa</th>
+                <th>Opiekun</th>
                 <th>Status</th>
                 <th>Data rozpoczęcia</th>
                 <th style="text-align: right;">Budżet godzinowy</th>
@@ -42,6 +43,17 @@
                         @if (!string.IsNullOrEmpty(project.Description))
                         {
                             <div style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.25rem;">@project.Description</div>
+                        }
+                    </td>
+                    <td>
+                        @if (project.Manager != null && project.Manager.User != null)
+                        {
+                            <span>@project.Manager.User.FirstName @project.Manager.User.LastName</span>
+                            <div style="color: var(--text-tertiary); font-size: 0.875rem;">@project.Manager.Position</div>
+                        }
+                        else
+                        {
+                            <span style="color: var(--text-tertiary);">Brak opiekuna</span>
                         }
                     </td>
                     <td>

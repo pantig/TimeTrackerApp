@@ -27,49 +27,47 @@ namespace TimeTrackerApp.Controllers
             _excelExportService = excelExportService;
         }
 
-        // Raport zbiorczy organizacji
+        // raport organizacji z godzinami wszystkich pracowników
         [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> Summary(int? year, int? month)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var user = await _context.Users.FindAsync(userId);
+            var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
 
-            // Domyślne wartości: bieżący miesiąc
-            var selectedYear = year ?? DateTime.UtcNow.Year;
-            var selectedMonth = month ?? DateTime.UtcNow.Month;
+            // jeśli nie podano - bierzemy obecny miesiąc
+            var wybranyRok = year ?? DateTime.UtcNow.Year;
+            var wybranyMiesiac = month ?? DateTime.UtcNow.Month;
 
-            var fromDate = new DateTime(selectedYear, selectedMonth, 1);
-            var toDate = fromDate.AddMonths(1).AddDays(-1);
+            var dataOd = new DateTime(wybranyRok, wybranyMiesiac, 1);
+            var dataDo = dataOd.AddMonths(1).AddDays(-1);
 
-            // Pobierz wszystkie wpisy czasu w organizacji
-            var timeEntries = await _context.TimeEntries
+            // pobieramy wszystkie wpisy czasu w tym okresie
+            var wpisyCzasu = await _context.TimeEntries
                 .Include(t => t.Employee)
                     .ThenInclude(e => e.User)
                 .Include(t => t.Project)
-                .Where(t => t.EntryDate >= fromDate && t.EntryDate <= toDate)
+                .Where(t => t.EntryDate >= dataOd && t.EntryDate <= dataDo)
                 .ToListAsync();
 
-            // Pobierz wszystkie projekty z sumą godzin
-            var projects = await _context.Projects
-                .Include(p => p.TimeEntries.Where(te => te.EntryDate >= fromDate && te.EntryDate <= toDate))
+            // pobieramy projekty z wpisami
+            var projekty = await _context.Projects
+                .Include(p => p.TimeEntries.Where(te => te.EntryDate >= dataOd && te.EntryDate <= dataDo))
                 .ToListAsync();
 
-            // Grupowanie po pracownikach
-            var employeeHours = timeEntries
-                .GroupBy(t => new { t.EmployeeId, EmployeeName = string.Format("{0} {1}", t.Employee.User.FirstName, t.Employee.User.LastName) })
+            // grupujemy godziny po pracownikach
+            var godzinyPracownikow = wpisyCzasu
+                .GroupBy(t => new { t.EmployeeId, NazwaPracownika = $"{t.Employee.User.FirstName} {t.Employee.User.LastName}" })
                 .Select(g => new EmployeeHoursSummary
                 {
                     EmployeeId = g.Key.EmployeeId,
-                    EmployeeName = g.Key.EmployeeName,
+                    EmployeeName = g.Key.NazwaPracownika,
                     TotalHours = g.Sum(t => t.TotalHours),
                     EntryCount = g.Count()
                 })
+                .OrderByDescending(e => e.TotalHours)
                 .ToList();
-            
-            employeeHours = employeeHours.OrderByDescending(e => e.TotalHours).ToList();
 
-            // Grupowanie po projektach
-            var projectHours = projects
+            // grupujemy godziny po projektach
+            var godzinyProjektow = projekty
                 .Select(p => new ProjectBudgetSummary
                 {
                     ProjectId = p.Id,
@@ -79,87 +77,79 @@ namespace TimeTrackerApp.Controllers
                     IsOverBudget = p.HoursBudget.HasValue && p.TimeEntries.Sum(te => te.TotalHours) > p.HoursBudget.Value,
                     EntryCount = p.TimeEntries.Count
                 })
+                .OrderByDescending(p => p.TotalHours)
                 .ToList();
-            
-            projectHours = projectHours.OrderByDescending(p => p.TotalHours).ToList();
 
             var viewModel = new OrganizationSummaryViewModel
             {
-                Year = selectedYear,
-                Month = selectedMonth,
-                FromDate = fromDate,
-                ToDate = toDate,
-                TotalHours = timeEntries.Sum(t => t.TotalHours),
-                TotalEmployees = employeeHours.Count,
-                TotalProjects = projectHours.Count(p => p.TotalHours > 0),
-                EmployeeHours = employeeHours,
-                ProjectHours = projectHours
+                Year = wybranyRok,
+                Month = wybranyMiesiac,
+                FromDate = dataOd,
+                ToDate = dataDo,
+                TotalHours = wpisyCzasu.Sum(t => t.TotalHours),
+                TotalEmployees = godzinyPracownikow.Count,
+                TotalProjects = godzinyProjektow.Count(p => p.TotalHours > 0),
+                EmployeeHours = godzinyPracownikow,
+                ProjectHours = godzinyProjektow
             };
 
             return View(viewModel);
         }
 
-        // Raport miesięczny pracownika
+        // raport miesięczny pojedynczego pracownika
         public async Task<IActionResult> Monthly(int? employeeId, int? year, int? month)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var user = await _context.Users.FindAsync(userId);
+            var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
 
-            // Domyślne wartości: bieżący miesiąc
-            var selectedYear = year ?? DateTime.UtcNow.Year;
-            var selectedMonth = month ?? DateTime.UtcNow.Month;
+            // jeśli nie podano - bierzemy obecny miesiąc
+            var wybranyRok = year ?? DateTime.UtcNow.Year;
+            var wybranyMiesiac = month ?? DateTime.UtcNow.Month;
 
-            var fromDate = new DateTime(selectedYear, selectedMonth, 1);
-            var toDate = fromDate.AddMonths(1).AddDays(-1);
+            var dataOd = new DateTime(wybranyRok, wybranyMiesiac, 1);
+            var dataDo = dataOd.AddMonths(1).AddDays(-1);
 
-            Employee? selectedEmployee = null;
-            List<Employee>? allEmployees = null;
+            Employee? wybranyPracownik = null;
+            List<Employee>? wszyscyPracownicy = null;
 
-            // Określenie zakresu pracowników
-            if (user.Role == UserRole.Employee)
+            // określamy kto może zobaczyć raport
+            if (aktualnyUzytkownik.Role == UserRole.Employee)
             {
-                // Pracownik widzi tylko swój raport
-                selectedEmployee = await _context.Employees.Include(e => e.User).FirstOrDefaultAsync(e => e.UserId == userId);
+                // zwykły pracownik widzi tylko swój raport
+                wybranyPracownik = await _context.Employees.Include(e => e.User).FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
             }
-            else if (user.Role == UserRole.Manager || user.Role == UserRole.Admin)
+            else if (CzyMaUprawnienia(aktualnyUzytkownik.Role))
             {
-                // Admin/Manager wybiera pracownika
-                allEmployees = await _context.Employees
-                    .Include(e => e.User)
-                    .ToListAsync();
-                
-                allEmployees = allEmployees
-                    .OrderBy(e => e.User.LastName)
-                    .ThenBy(e => e.User.FirstName)
-                    .ToList();
+                // admin/manager wybiera pracownika z listy
+                wszyscyPracownicy = await PobierzPosortowanychPracownikow();
 
                 if (employeeId.HasValue)
                 {
-                    selectedEmployee = allEmployees.FirstOrDefault(e => e.Id == employeeId.Value);
+                    wybranyPracownik = wszyscyPracownicy.FirstOrDefault(e => e.Id == employeeId.Value);
                 }
-                else if (allEmployees.Any())
+                else if (wszyscyPracownicy.Any())
                 {
-                    selectedEmployee = allEmployees.First();
+                    wybranyPracownik = wszyscyPracownicy.First();
                 }
             }
 
-            if (selectedEmployee == null)
+            if (wybranyPracownik == null)
             {
                 TempData["ErrorMessage"] = "Nie znaleziono pracownika.";
                 return RedirectToAction(nameof(Summary));
             }
 
-            // Pobierz wpisy czasu dla wybranego pracownika i miesiąca
-            var timeEntries = await _context.TimeEntries
+            // pobieramy wpisy czasu dla wybranego pracownika
+            var wpisyCzasu = await _context.TimeEntries
                 .Include(t => t.Project)
                 .Include(t => t.CreatedByUser)
-                .Where(t => t.EmployeeId == selectedEmployee.Id && t.EntryDate >= fromDate && t.EntryDate <= toDate)
+                .Where(t => t.EmployeeId == wybranyPracownik.Id && t.EntryDate >= dataOd && t.EntryDate <= dataDo)
                 .ToListAsync();
             
-            timeEntries = timeEntries.OrderBy(t => t.EntryDate).ToList();
+            // sortujemy w pamięci (SQLite nie obsługuje sortowania po TimeSpan)
+            wpisyCzasu = wpisyCzasu.OrderBy(t => t.EntryDate).ToList();
 
-            // Grupowanie po dniach
-            var entriesByDay = timeEntries
+            // grupujemy po dniach
+            var wpisyPoDniach = wpisyCzasu
                 .GroupBy(t => t.EntryDate.Date)
                 .Select(g => new DailyHoursReport
                 {
@@ -167,12 +157,11 @@ namespace TimeTrackerApp.Controllers
                     TotalHours = g.Sum(t => t.TotalHours),
                     Entries = g.ToList()
                 })
+                .OrderBy(g => g.Date)
                 .ToList();
-            
-            entriesByDay = entriesByDay.OrderBy(g => g.Date).ToList();
 
-            // Grupowanie po projektach
-            var entriesByProject = timeEntries
+            // grupujemy po projektach
+            var wpisyPoProjektach = wpisyCzasu
                 .GroupBy(t => t.Project != null ? t.Project.Name : "(brak projektu)")
                 .Select(g => new ProjectHoursReport
                 {
@@ -180,88 +169,111 @@ namespace TimeTrackerApp.Controllers
                     TotalHours = g.Sum(t => t.TotalHours),
                     EntryCount = g.Count()
                 })
+                .OrderByDescending(p => p.TotalHours)
                 .ToList();
-            
-            entriesByProject = entriesByProject.OrderByDescending(p => p.TotalHours).ToList();
 
-            var employeeName = string.Format("{0} {1}", selectedEmployee.User.FirstName, selectedEmployee.User.LastName);
+            var nazwaPracownika = $"{wybranyPracownik.User.FirstName} {wybranyPracownik.User.LastName}";
             
             var viewModel = new MonthlyReportViewModel
             {
-                EmployeeId = selectedEmployee.Id,
-                EmployeeName = employeeName,
-                Year = selectedYear,
-                Month = selectedMonth,
-                FromDate = fromDate,
-                ToDate = toDate,
-                EntriesByDay = entriesByDay,
-                EntriesByProject = entriesByProject,
-                TotalHours = timeEntries.Sum(t => t.TotalHours),
-                TotalDays = entriesByDay.Count,
-                AllEmployees = allEmployees,
-                CanSelectEmployee = user.Role == UserRole.Admin || user.Role == UserRole.Manager
+                EmployeeId = wybranyPracownik.Id,
+                EmployeeName = nazwaPracownika,
+                Year = wybranyRok,
+                Month = wybranyMiesiac,
+                FromDate = dataOd,
+                ToDate = dataDo,
+                EntriesByDay = wpisyPoDniach,
+                EntriesByProject = wpisyPoProjektach,
+                TotalHours = wpisyCzasu.Sum(t => t.TotalHours),
+                TotalDays = wpisyPoDniach.Count,
+                AllEmployees = wszyscyPracownicy,
+                CanSelectEmployee = CzyMaUprawnienia(aktualnyUzytkownik.Role)
             };
 
             return View(viewModel);
         }
 
-        // Export Excel
+        // eksport raportu do excela
         public async Task<IActionResult> ExportMonthlyExcel(int employeeId, int year, int month)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var user = await _context.Users.FindAsync(userId);
+            var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
 
-            // Sprawdź uprawnienia
-            var employee = await _context.Employees
+            var pracownik = await _context.Employees
                 .Include(e => e.User)
                 .FirstOrDefaultAsync(e => e.Id == employeeId);
 
-            if (employee == null)
+            if (pracownik == null)
             {
                 return NotFound();
             }
 
-            // Tylko właściciel lub Admin/Manager
-            if (user.Role == UserRole.Employee && employee.UserId != userId)
+            // sprawdzamy czy użytkownik ma prawo eksportować ten raport
+            if (aktualnyUzytkownik.Role == UserRole.Employee && pracownik.UserId != aktualnyUzytkownik.Id)
             {
                 return Forbid();
             }
 
-            var fromDate = new DateTime(year, month, 1);
-            var toDate = fromDate.AddMonths(1).AddDays(-1);
+            var dataOd = new DateTime(year, month, 1);
+            var dataDo = dataOd.AddMonths(1).AddDays(-1);
 
-            // Pobierz wpisy czasu
-            var timeEntries = await _context.TimeEntries
+            // pobieramy wpisy czasu
+            var wpisyCzasu = await _context.TimeEntries
                 .Include(t => t.Project)
                 .Include(t => t.CreatedByUser)
-                .Where(t => t.EmployeeId == employeeId && t.EntryDate >= fromDate && t.EntryDate <= toDate)
+                .Where(t => t.EmployeeId == employeeId && t.EntryDate >= dataOd && t.EntryDate <= dataDo)
                 .ToListAsync();
             
-            timeEntries = timeEntries
+            // sortujemy w pamięci (SQLite nie obsługuje sortowania po TimeSpan w LINQ)
+            wpisyCzasu = wpisyCzasu
                 .OrderBy(t => t.EntryDate)
                 .ThenBy(t => t.StartTime)
                 .ToList();
 
-            // Pobierz day markers
-            var dayMarkers = await _context.DayMarkers
-                .Where(d => d.EmployeeId == employeeId && d.Date >= fromDate && d.Date <= toDate)
+            // pobieramy markery dni
+            var markeryDni = await _context.DayMarkers
+                .Where(d => d.EmployeeId == employeeId && d.Date >= dataOd && d.Date <= dataDo)
                 .ToListAsync();
 
-            var dayMarkerDict = new Dictionary<DateTime, DayMarker?>();
-            var daysInMonth = DateTime.DaysInMonth(year, month);
-            for (int day = 1; day <= daysInMonth; day++)
+            // tworzymy słownik markerów dla każdego dnia
+            var slownikMarkerow = new Dictionary<DateTime, DayMarker?>();
+            var iloscDni = DateTime.DaysInMonth(year, month);
+            for (int dzien = 1; dzien <= iloscDni; dzien++)
             {
-                var date = new DateTime(year, month, day);
-                dayMarkerDict[date] = dayMarkers.FirstOrDefault(d => d.Date.Date == date);
+                var data = new DateTime(year, month, dzien);
+                slownikMarkerow[data] = markeryDni.FirstOrDefault(d => d.Date.Date == data);
             }
 
-            var employeeName = string.Format("{0} {1}", employee.User.FirstName, employee.User.LastName);
-            var excelBytes = _excelExportService.GenerateMonthlyReport(employeeName, year, month, timeEntries, dayMarkerDict);
+            var nazwaPracownika = $"{pracownik.User.FirstName} {pracownik.User.LastName}";
+            var plikExcel = _excelExportService.GenerateMonthlyReport(nazwaPracownika, year, month, wpisyCzasu, slownikMarkerow);
 
-            var monthName = new DateTime(year, month, 1).ToString("MMMM yyyy", new System.Globalization.CultureInfo("pl-PL"));
-            var fileName = string.Format("{0}-{1}-{2}.xlsx", employee.User.FirstName, employee.User.LastName, monthName);
+            var nazwaMiesiaca = new DateTime(year, month, 1).ToString("MMMM yyyy", new System.Globalization.CultureInfo("pl-PL"));
+            var nazwaPliku = $"{pracownik.User.FirstName}-{pracownik.User.LastName}-{nazwaMiesiaca}.xlsx";
 
-            return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+            return File(plikExcel, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", nazwaPliku);
+        }
+
+        // metody pomocnicze
+        private async Task<User> PobierzAktualnegoUzytkownika()
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            return await _context.Users.FindAsync(userId);
+        }
+
+        private bool CzyMaUprawnienia(UserRole rola)
+        {
+            return rola == UserRole.Admin || rola == UserRole.Manager;
+        }
+
+        private async Task<List<Employee>> PobierzPosortowanychPracownikow()
+        {
+            var pracownicy = await _context.Employees
+                .Include(e => e.User)
+                .ToListAsync();
+            
+            return pracownicy
+                .OrderBy(e => e.User.LastName)
+                .ThenBy(e => e.User.FirstName)
+                .ToList();
         }
     }
 }

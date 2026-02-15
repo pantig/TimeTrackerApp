@@ -58,10 +58,24 @@ namespace TimeTrackerApp.Controllers
                 employees = employees.Where(e => e.UserId == userId);
             }
 
+            // pobieramy projekty - pracownik widzi tylko przypisane mu projekty
+            List<Project> dostepneProjekty;
+            if (user.Role == UserRole.Employee)
+            {
+                var pracownik = await _context.Employees
+                    .Include(e => e.Projects)
+                    .FirstOrDefaultAsync(e => e.UserId == userId);
+                dostepneProjekty = pracownik?.Projects.Where(p => p.IsActive).ToList() ?? new List<Project>();
+            }
+            else
+            {
+                dostepneProjekty = await _context.Projects.Where(p => p.IsActive).ToListAsync();
+            }
+
             var viewModel = new TimeEntryViewModel
             {
                 Employees = await employees.ToListAsync(),
-                Projects = await _context.Projects.Where(p => p.IsActive).ToListAsync(),
+                Projects = dostepneProjekty,
                 EntryDate = date ?? DateTime.Today,
                 StartTime = new TimeSpan(8, 0, 0),
                 EndTime = new TimeSpan(16, 0, 0)
@@ -76,6 +90,10 @@ namespace TimeTrackerApp.Controllers
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
             var user = await _context.Users.FindAsync(userId);
 
+            // Usuń błędy walidacji dla kolekcji (wyświetlane w widoku, ale nie są częścią modelu)
+            ModelState.Remove("Employees");
+            ModelState.Remove("Projects");
+
             if (!ModelState.IsValid)
             {
                 var employeesQuery = _context.Employees.Include(e => e.User).AsQueryable();
@@ -84,8 +102,49 @@ namespace TimeTrackerApp.Controllers
                     employeesQuery = employeesQuery.Where(e => e.UserId == userId);
                 }
                 model.Employees = await employeesQuery.ToListAsync();
-                model.Projects = await _context.Projects.Where(p => p.IsActive).ToListAsync();
+                
+                // pobieramy projekty odpowiednio do roli
+                if (user.Role == UserRole.Employee)
+                {
+                    var pracownik = await _context.Employees
+                        .Include(e => e.Projects)
+                        .FirstOrDefaultAsync(e => e.UserId == userId);
+                    model.Projects = pracownik?.Projects.Where(p => p.IsActive).ToList() ?? new List<Project>();
+                }
+                else
+                {
+                    model.Projects = await _context.Projects.Where(p => p.IsActive).ToListAsync();
+                }
                 return View(model);
+            }
+
+            // sprawdzamy uprawnienia - pracownik może dodawać tylko dla siebie
+            if (user.Role == UserRole.Employee)
+            {
+                var employee = await _context.Employees
+                    .Include(e => e.Projects)
+                    .FirstOrDefaultAsync(e => e.UserId == userId);
+                    
+                if (employee == null || model.EmployeeId != employee.Id)
+                {
+                    ModelState.AddModelError("", "Nie masz uprawnień do dodawania wpisów dla innych pracowników.");
+                    model.Employees = new List<Employee> { employee };
+                    model.Projects = employee?.Projects.Where(p => p.IsActive).ToList() ?? new List<Project>();
+                    return View(model);
+                }
+
+                // sprawdzamy czy pracownik jest przypisany do projektu
+                if (model.ProjectId.HasValue)
+                {
+                    var czyPrzypisany = employee.Projects.Any(p => p.Id == model.ProjectId.Value);
+                    if (!czyPrzypisany)
+                    {
+                        ModelState.AddModelError("ProjectId", "Nie jesteś przypisany do tego projektu.");
+                        model.Employees = new List<Employee> { employee };
+                        model.Projects = employee.Projects.Where(p => p.IsActive).ToList();
+                        return View(model);
+                    }
+                }
             }
 
             var timeEntry = new TimeEntry
@@ -99,19 +158,6 @@ namespace TimeTrackerApp.Controllers
                 CreatedBy = userId,
                 CreatedAt = DateTime.UtcNow
             };
-
-            // Sprawdzenie uprawnień: Pracownik może dodawać tylko dla siebie
-            if (user.Role == UserRole.Employee)
-            {
-                var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
-                if (employee == null || timeEntry.EmployeeId != employee.Id)
-                {
-                    ModelState.AddModelError("", "Nie masz uprawnień do dodawania wpisów dla innych pracowników.");
-                    model.Employees = new List<Employee> { employee };
-                    model.Projects = await _context.Projects.Where(p => p.IsActive).ToListAsync();
-                    return View(model);
-                }
-            }
 
             _context.TimeEntries.Add(timeEntry);
             await _context.SaveChangesAsync();
@@ -129,7 +175,7 @@ namespace TimeTrackerApp.Controllers
             if (timeEntry == null)
                 return NotFound();
 
-            // Sprawdzenie uprawnień
+            // sprawdzamy uprawnienia
             if (user.Role == UserRole.Employee)
             {
                 var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
@@ -143,6 +189,20 @@ namespace TimeTrackerApp.Controllers
                 employeesQuery = employeesQuery.Where(e => e.UserId == userId);
             }
 
+            // pobieramy projekty odpowiednio do roli
+            List<Project> dostepneProjekty;
+            if (user.Role == UserRole.Employee)
+            {
+                var pracownik = await _context.Employees
+                    .Include(e => e.Projects)
+                    .FirstOrDefaultAsync(e => e.UserId == userId);
+                dostepneProjekty = pracownik?.Projects.Where(p => p.IsActive).ToList() ?? new List<Project>();
+            }
+            else
+            {
+                dostepneProjekty = await _context.Projects.Where(p => p.IsActive).ToListAsync();
+            }
+
             var viewModel = new TimeEntryViewModel
             {
                 Id = timeEntry.Id,
@@ -153,7 +213,7 @@ namespace TimeTrackerApp.Controllers
                 EndTime = timeEntry.EndTime,
                 Description = timeEntry.Description,
                 Employees = await employeesQuery.ToListAsync(),
-                Projects = await _context.Projects.Where(p => p.IsActive).ToListAsync()
+                Projects = dostepneProjekty
             };
 
             return View(viewModel);
@@ -169,6 +229,10 @@ namespace TimeTrackerApp.Controllers
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
             var user = await _context.Users.FindAsync(userId);
 
+            // Usuń błędy walidacji dla kolekcji (wyświetlane w widoku, ale nie są częścią modelu)
+            ModelState.Remove("Employees");
+            ModelState.Remove("Projects");
+
             if (!ModelState.IsValid)
             {
                 var employeesQuery = _context.Employees.Include(e => e.User).AsQueryable();
@@ -177,7 +241,19 @@ namespace TimeTrackerApp.Controllers
                     employeesQuery = employeesQuery.Where(e => e.UserId == userId);
                 }
                 model.Employees = await employeesQuery.ToListAsync();
-                model.Projects = await _context.Projects.Where(p => p.IsActive).ToListAsync();
+                
+                // pobieramy projekty odpowiednio do roli
+                if (user.Role == UserRole.Employee)
+                {
+                    var pracownik = await _context.Employees
+                        .Include(e => e.Projects)
+                        .FirstOrDefaultAsync(e => e.UserId == userId);
+                    model.Projects = pracownik?.Projects.Where(p => p.IsActive).ToList() ?? new List<Project>();
+                }
+                else
+                {
+                    model.Projects = await _context.Projects.Where(p => p.IsActive).ToListAsync();
+                }
                 return View(model);
             }
 
@@ -185,12 +261,28 @@ namespace TimeTrackerApp.Controllers
             if (timeEntry == null)
                 return NotFound();
 
-            // Sprawdzenie uprawnień
+            // sprawdzamy uprawnienia
             if (user.Role == UserRole.Employee)
             {
-                var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
+                var employee = await _context.Employees
+                    .Include(e => e.Projects)
+                    .FirstOrDefaultAsync(e => e.UserId == userId);
+                    
                 if (employee == null || timeEntry.EmployeeId != employee.Id || model.EmployeeId != employee.Id)
                     return Forbid();
+
+                // sprawdzamy czy pracownik jest przypisany do nowego projektu
+                if (model.ProjectId.HasValue)
+                {
+                    var czyPrzypisany = employee.Projects.Any(p => p.Id == model.ProjectId.Value);
+                    if (!czyPrzypisany)
+                    {
+                        ModelState.AddModelError("ProjectId", "Nie jesteś przypisany do tego projektu.");
+                        model.Employees = new List<Employee> { employee };
+                        model.Projects = employee.Projects.Where(p => p.IsActive).ToList();
+                        return View(model);
+                    }
+                }
             }
 
             timeEntry.EmployeeId = model.EmployeeId;
@@ -219,7 +311,7 @@ namespace TimeTrackerApp.Controllers
             if (timeEntry == null)
                 return NotFound();
 
-            // Sprawdzenie uprawnień
+            // sprawdzamy uprawnienia
             if (user.Role == UserRole.Employee)
             {
                 var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
@@ -241,7 +333,7 @@ namespace TimeTrackerApp.Controllers
             if (timeEntry == null)
                 return NotFound();
 
-            // Sprawdzenie uprawnień
+            // sprawdzamy uprawnienia
             if (user.Role == UserRole.Employee)
             {
                 var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
