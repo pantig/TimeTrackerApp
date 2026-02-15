@@ -162,10 +162,12 @@ public class NoProjectReportControllerTests : IDisposable
         // Assert
         result.Should().BeOfType<ViewResult>();
         var viewResult = result as ViewResult;
-        viewResult.Model.Should().BeOfType<NoProjectEntriesViewModel>();
+        viewResult.Should().NotBeNull();
+        viewResult!.Model.Should().BeOfType<NoProjectEntriesViewModel>();
 
         var model = viewResult.Model as NoProjectEntriesViewModel;
-        model.Entries.Should().HaveCount(2); // Only entries without project
+        model.Should().NotBeNull();
+        model!.Entries.Should().HaveCount(2); // Only entries without project
         model.IsManagerView.Should().BeFalse();
         model.EmployeeName.Should().Be("Jan Kowalski");
         model.TotalHours.Should().Be(3); // 2h + 1h
@@ -183,7 +185,8 @@ public class NoProjectReportControllerTests : IDisposable
         // Assert
         result.Should().BeOfType<RedirectToActionResult>();
         var redirectResult = result as RedirectToActionResult;
-        redirectResult.ActionName.Should().Be("Index");
+        redirectResult.Should().NotBeNull();
+        redirectResult!.ActionName.Should().Be("Index");
         redirectResult.ControllerName.Should().Be("TimeEntries");
     }
 
@@ -199,10 +202,12 @@ public class NoProjectReportControllerTests : IDisposable
         // Assert
         result.Should().BeOfType<ViewResult>();
         var viewResult = result as ViewResult;
-        viewResult.Model.Should().BeOfType<NoProjectEntriesViewModel>();
+        viewResult.Should().NotBeNull();
+        viewResult!.Model.Should().BeOfType<NoProjectEntriesViewModel>();
 
         var model = viewResult.Model as NoProjectEntriesViewModel;
-        model.Entries.Should().HaveCount(2);
+        model.Should().NotBeNull();
+        model!.Entries.Should().HaveCount(2);
         model.IsManagerView.Should().BeTrue();
         model.AllEmployees.Should().NotBeNull();
     }
@@ -219,9 +224,11 @@ public class NoProjectReportControllerTests : IDisposable
         // Assert
         result.Should().BeOfType<ViewResult>();
         var viewResult = result as ViewResult;
-        var model = viewResult.Model as NoProjectEntriesViewModel;
+        viewResult.Should().NotBeNull();
+        var model = viewResult!.Model as NoProjectEntriesViewModel;
+        model.Should().NotBeNull();
 
-        model.Entries.Should().HaveCount(2);
+        model!.Entries.Should().HaveCount(2);
         model.SelectedEmployeeId.Should().Be(3);
         model.Entries.Should().OnlyContain(e => e.EmployeeId == 3);
     }
@@ -230,7 +237,7 @@ public class NoProjectReportControllerTests : IDisposable
     public async Task AssignProject_WithValidData_AssignsProjectSuccessfully()
     {
         // Arrange
-        var request = new Controllers.NoProjectReportController.AssignProjectRequest
+        var request = new NoProjectReportController.AssignProjectRequest
         {
             EntryId = 2,
             ProjectId = 1
@@ -244,14 +251,15 @@ public class NoProjectReportControllerTests : IDisposable
         
         // Check database
         var entry = await _context.TimeEntries.FindAsync(2);
-        entry.ProjectId.Should().Be(1);
+        entry.Should().NotBeNull();
+        entry!.ProjectId.Should().Be(1);
     }
 
     [Fact]
     public async Task AssignProject_WithNonExistentEntry_ReturnsFailure()
     {
         // Arrange
-        var request = new Controllers.NoProjectReportController.AssignProjectRequest
+        var request = new NoProjectReportController.AssignProjectRequest
         {
             EntryId = 999,
             ProjectId = 1
@@ -304,7 +312,7 @@ public class NoProjectReportControllerTests : IDisposable
         _context.TimeEntries.Add(otherEntry);
         await _context.SaveChangesAsync();
 
-        var request = new Controllers.NoProjectReportController.AssignProjectRequest
+        var request = new NoProjectReportController.AssignProjectRequest
         {
             EntryId = 100,
             ProjectId = 1
@@ -326,10 +334,12 @@ public class NoProjectReportControllerTests : IDisposable
         // Act
         var result = await _controller.MyEntries();
         var viewResult = result as ViewResult;
-        var model = viewResult.Model as NoProjectEntriesViewModel;
+        viewResult.Should().NotBeNull();
+        var model = viewResult!.Model as NoProjectEntriesViewModel;
+        model.Should().NotBeNull();
 
         // Assert
-        model.TotalHours.Should().Be(3.0m); // 2h + 1h
+        model!.TotalHours.Should().Be(3.0m); // 2h + 1h
     }
 
     [Fact]
@@ -341,10 +351,12 @@ public class NoProjectReportControllerTests : IDisposable
         // Act
         var result = await _controller.MyEntries();
         var viewResult = result as ViewResult;
-        var model = viewResult.Model as NoProjectEntriesViewModel;
+        viewResult.Should().NotBeNull();
+        var model = viewResult!.Model as NoProjectEntriesViewModel;
+        model.Should().NotBeNull();
 
         // Assert
-        model.TotalDays.Should().Be(2); // Today and yesterday
+        model!.TotalDays.Should().Be(2); // Today and yesterday
     }
 
     public void Dispose()

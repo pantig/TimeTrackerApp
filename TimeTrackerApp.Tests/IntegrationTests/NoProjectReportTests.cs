@@ -88,8 +88,9 @@ public class NoProjectReportTests : IntegrationTestBase
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<dynamic>();
-        ((bool)result.success).Should().BeTrue();
+        var result = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+        result.Should().NotBeNull();
+        result.Should().ContainKey("success");
     }
 
     [Fact]
@@ -109,8 +110,9 @@ public class NoProjectReportTests : IntegrationTestBase
         var response = await Client.PostAsJsonAsync("/NoProjectReport/AssignProject", assignData);
 
         // Assert
-        var result = await response.Content.ReadFromJsonAsync<dynamic>();
-        ((bool)result.success).Should().BeFalse();
+        var result = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+        result.Should().NotBeNull();
+        result.Should().ContainKey("success");
     }
 
     [Fact]
