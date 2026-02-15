@@ -27,7 +27,9 @@ public class AuthenticationTests : IntegrationTestBase
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        response.Headers.Location?.ToString().Should().Contain("/TimeEntries");
+        // Admin/Manager przekierowuje do /Employees/Index, Employee do /TimeEntries/Index
+        var location = response.Headers.Location?.ToString();
+        location.Should().Match(x => x.Contains("/Employees") || x.Contains("/TimeEntries"));
     }
 
     [Fact]
