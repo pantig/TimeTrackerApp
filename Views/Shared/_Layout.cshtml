@@ -38,6 +38,7 @@
                 
                 @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
                 {
+                    <a asp-controller="Clients" asp-action="Index">Klienci</a>
                     <a asp-controller="Projects" asp-action="Index">Projekty</a>
                     <a asp-controller="Employees" asp-action="Index">Pracownicy</a>
                 }
