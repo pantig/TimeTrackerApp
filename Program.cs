@@ -48,11 +48,21 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-// Apply migrations automatically
+// Apply migrations automatically (only for relational databases)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate();
+    
+    // Only migrate if using a relational database (not InMemory for tests)
+    if (db.Database.IsRelational())
+    {
+        db.Database.Migrate();
+    }
+    else
+    {
+        // For InMemory, just ensure the database is created
+        db.Database.EnsureCreated();
+    }
 }
 
 app.Run();
