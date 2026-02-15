@@ -10,10 +10,11 @@ namespace TimeTrackerApp.Data
                 return;
 
             // 1. USERS - tworzymy użytkowników
+            // ✅ FIXED: Używamy emailów zgodnych z testami (@test.com zamiast @example.com)
             var adminUser = new User
             {
-                Email = "admin@example.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
+                Email = "admin@test.com",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
                 FirstName = "Admin",
                 LastName = "System",
                 Role = UserRole.Admin,
@@ -22,8 +23,8 @@ namespace TimeTrackerApp.Data
 
             var managerUser = new User
             {
-                Email = "manager@example.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("manager123"),
+                Email = "manager@test.com",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Manager123!"),
                 FirstName = "Jan",
                 LastName = "Kierownik",
                 Role = UserRole.Manager,
@@ -32,8 +33,8 @@ namespace TimeTrackerApp.Data
 
             var employeeUser = new User
             {
-                Email = "employee@example.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("employee123"),
+                Email = "employee@test.com",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Employee123!"),
                 FirstName = "Piotr",
                 LastName = "Pracownik",
                 Role = UserRole.Employee,
