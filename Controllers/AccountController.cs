@@ -18,9 +18,9 @@ namespace TimeTrackerApp.Controllers
         }
 
         [HttpGet]
-        public IActionResult Login(string returnUrl = null)
+        public IActionResult Login(string? returnUrl = null)
         {
-            if (User.Identity.IsAuthenticated)
+            if (User.Identity?.IsAuthenticated == true)
             {
                 return RedirectToProperDashboard();
             }
@@ -29,7 +29,7 @@ namespace TimeTrackerApp.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Login(LoginViewModel model, string returnUrl = null)
+        public async Task<IActionResult> Login(LoginViewModel model, string? returnUrl = null)
         {
             if (!ModelState.IsValid)
                 return View(model);
@@ -74,7 +74,7 @@ namespace TimeTrackerApp.Controllers
             if (role == null)
             {
                 var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
-                if (Enum.TryParse<UserRole>(roleClaim, out var r))
+                if (!string.IsNullOrEmpty(roleClaim) && Enum.TryParse<UserRole>(roleClaim, out var r))
                 {
                     role = r;
                 }
