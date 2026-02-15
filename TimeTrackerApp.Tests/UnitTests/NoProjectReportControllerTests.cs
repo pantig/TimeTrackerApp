@@ -56,9 +56,20 @@ public class NoProjectReportControllerTests : IDisposable
             Role = UserRole.Manager
         };
 
-        _context.Users.AddRange(employeeUser, managerUser);
+        // User without Employee profile
+        var userWithoutProfile = new User
+        {
+            Id = 999,
+            Email = "noprofile@test.com",
+            FirstName = "No",
+            LastName = "Profile",
+            PasswordHash = "hash",
+            Role = UserRole.Employee
+        };
 
-        // Employees
+        _context.Users.AddRange(employeeUser, managerUser, userWithoutProfile);
+
+        // Employees - ONLY for user 3, NOT for user 999
         var employee = new Employee
         {
             Id = 3,
@@ -179,8 +190,8 @@ public class NoProjectReportControllerTests : IDisposable
     [Fact]
     public async Task MyEntries_WithoutEmployeeProfile_RedirectsWithError()
     {
-        // Arrange
-        SetupControllerContext(999); // Non-existent user
+        // Arrange - User 999 exists but has NO Employee profile
+        SetupControllerContext(999);
 
         // Act
         var result = await _controller.MyEntries();
