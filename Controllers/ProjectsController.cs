@@ -71,6 +71,20 @@ namespace TimeTrackerApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Project model, int[] selectedEmployees)
         {
+            // DEBUG: Wypisz wszystkie błędy walidacji
+            if (!ModelState.IsValid)
+            {
+                foreach (var error in ModelState)
+                {
+                    Console.WriteLine($"Key: {error.Key}, Errors: {string.Join(", ", error.Value.Errors.Select(e => e.ErrorMessage))}");
+                }
+            }
+
+            // Usuń błędy dla właściwości nawigacyjnych (EF wypełni je automatycznie)
+            ModelState.Remove("Manager");
+            ModelState.Remove("TimeEntries");
+            ModelState.Remove("Employees");
+
             if (ModelState.IsValid)
             {
                 // sprawdzamy czy wybrany manager jest kierownikiem
@@ -175,6 +189,20 @@ namespace TimeTrackerApp.Controllers
         {
             if (id != model.Id)
                 return NotFound();
+
+            // DEBUG: Wypisz wszystkie błędy walidacji
+            if (!ModelState.IsValid)
+            {
+                foreach (var error in ModelState)
+                {
+                    Console.WriteLine($"Key: {error.Key}, Errors: {string.Join(", ", error.Value.Errors.Select(e => e.ErrorMessage))}");
+                }
+            }
+
+            // Usuń błędy dla właściwości nawigacyjnych (EF wypełni je automatycznie)
+            ModelState.Remove("Manager");
+            ModelState.Remove("TimeEntries");
+            ModelState.Remove("Employees");
 
             if (ModelState.IsValid)
             {
