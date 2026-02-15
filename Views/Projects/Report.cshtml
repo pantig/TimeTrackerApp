@@ -1,0 +1,286 @@
+@model TimeTrackerApp.Models.ViewModels.ProjectReportViewModel
+@{
+    ViewData["Title"] = $"Raport projektu - {Model.Project.Name}";
+}
+
+<div class="page-header">
+    <div>
+        <h2>📄 Raport projektu: @Model.Project.Name</h2>
+        <p class="subtitle">Szczegółowa analiza czasu pracy i zaangażowania zespołu</p>
+    </div>
+    <div>
+        <a asp-action="Index" class="btn btn-secondary">← Powrót do listy</a>
+    </div>
+</div>
+
+<!-- Informacje podstawowe o projekcie -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header">
+        <h3>📁 Informacje o projekcie</h3>
+    </div>
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+            <div>
+                <div class="info-label">Status</div>
+                <div class="info-value">
+                    @switch (Model.Project.Status)
+                    {
+                        case TimeTrackerApp.Models.ProjectStatus.Active:
+                            <span class="badge badge-success">✅ Aktywny</span>
+                            break;
+                        case TimeTrackerApp.Models.ProjectStatus.Completed:
+                            <span class="badge badge-info">✔️ Zakończony</span>
+                            break;
+                        case TimeTrackerApp.Models.ProjectStatus.Planning:
+                            <span class="badge badge-warning">📅 Planowanie</span>
+                            break;
+                        case TimeTrackerApp.Models.ProjectStatus.OnHold:
+                            <span class="badge badge-secondary">⏸️ Wstrzymany</span>
+                            break;
+                    }
+                </div>
+            </div>
+            <div>
+                <div class="info-label">Opiekun projektu</div>
+                <div class="info-value">@Model.Project.Manager.User.FirstName @Model.Project.Manager.User.LastName</div>
+            </div>
+            @if (Model.Project.Client != null)
+            {
+                <div>
+                    <div class="info-label">Klient</div>
+                    <div class="info-value">@Model.Project.Client.Name</div>
+                </div>
+            }
+            <div>
+                <div class="info-label">Data rozpoczęcia</div>
+                <div class="info-value">@Model.Project.StartDate.ToString("dd.MM.yyyy")</div>
+            </div>
+            @if (Model.Project.EndDate.HasValue)
+            {
+                <div>
+                    <div class="info-label">Data zakończenia</div>
+                    <div class="info-value">@Model.Project.EndDate.Value.ToString("dd.MM.yyyy")</div>
+                </div>
+            }
+        </div>
+        @if (!string.IsNullOrEmpty(Model.Project.Description))
+        {
+            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-light);">
+                <div class="info-label">Opis projektu</div>
+                <div class="info-value" style="color: var(--text-secondary);">@Model.Project.Description</div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Podsumowanie statystyk -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header">
+        <h3>📊 Podsumowanie</h3>
+    </div>
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+            <div class="stat-box">
+                <div class="stat-label">Pracownicy w zespole</div>
+                <div class="stat-value">@Model.Summary.TotalEmployees</div>
+            </div>
+            <div class="stat-box" style="background: rgba(34, 197, 94, 0.1); border-color: #22c55e;">
+                <div class="stat-label" style="color: #22c55e;">✅ Aktywni</div>
+                <div class="stat-value" style="color: #22c55e;">@Model.Summary.ActiveEmployees</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Całkowite godziny</div>
+                <div class="stat-value">@Model.Summary.TotalHoursLogged.ToString("F1") h</div>
+            </div>
+            @if (Model.Summary.HoursBudget.HasValue)
+            {
+                <div class="stat-box">
+                    <div class="stat-label">Budżet godzinowy</div>
+                    <div class="stat-value">@Model.Summary.HoursBudget.Value.ToString("F0") h</div>
+                </div>
+                <div class="stat-box" style="background: rgba(234, 179, 8, 0.1); border-color: #eab308;">
+                    <div class="stat-label" style="color: #eab308;">Wykorzystanie budżetu</div>
+                    <div class="stat-value" style="color: #eab308;">@Model.Summary.BudgetUsagePercentage?.ToString("F1")%</div>
+                </div>
+            }
+            <div class="stat-box">
+                <div class="stat-label">Liczba wpisów</div>
+                <div class="stat-value">@Model.Summary.TotalEntries</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Dni aktywności</div>
+                <div class="stat-value">@Model.Summary.DaysActive</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Wykaz godzin pracowników -->
+<div class="card">
+    <div class="card-header">
+        <h3>👥 Wykaz godzin pracowników</h3>
+    </div>
+    <div class="card-body">
+        @if (Model.EmployeeTimeEntries.Any())
+        {
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Pracownik</th>
+                            <th>Stanowisko</th>
+                            <th style="text-align: right;">Całkowite godziny</th>
+                            <th style="text-align: center;">Liczba wpisów</th>
+                            <th>Pierwszy wpis</th>
+                            <th>Ostatni wpis</th>
+                            <th style="text-align: right;">Udział</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entry in Model.EmployeeTimeEntries)
+                        {
+                            var sharePercentage = Model.Summary.TotalHoursLogged > 0 
+                                ? (entry.TotalHours / Model.Summary.TotalHoursLogged) * 100 
+                                : 0;
+
+                            <tr>
+                                <td>
+                                    <strong>@entry.EmployeeName</strong>
+                                </td>
+                                <td>
+                                    <span style="color: var(--text-secondary);">@entry.Position</span>
+                                </td>
+                                <td style="text-align: right;">
+                                    <strong style="font-size: 1.125rem;">@entry.TotalHours.ToString("F1") h</strong>
+                                </td>
+                                <td style="text-align: center;">
+                                    <span class="badge badge-info">@entry.EntriesCount</span>
+                                </td>
+                                <td>
+                                    @entry.FirstEntry.ToString("dd.MM.yyyy")
+                                </td>
+                                <td>
+                                    @if (entry.LastEntry.HasValue)
+                                    {
+                                        @entry.LastEntry.Value.ToString("dd.MM.yyyy")
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td style="text-align: right;">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end;">
+                                        <div style="width: 80px; background: var(--bg-tertiary); border-radius: 8px; height: 8px; overflow: hidden;">
+                                            <div style="width: @sharePercentage.ToString("F1")%; background: #3b82f6; height: 100%; transition: width 0.3s;"></div>
+                                        </div>
+                                        <span style="font-weight: 600; min-width: 50px; color: var(--text-secondary);">@sharePercentage.ToString("F1")%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr style="font-weight: 600; border-top: 2px solid var(--border-light);">
+                            <td colspan="2">RAZEM</td>
+                            <td style="text-align: right;">@Model.Summary.TotalHoursLogged.ToString("F1") h</td>
+                            <td style="text-align: center;">@Model.Summary.TotalEntries</td>
+                            <td colspan="3"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <p>📅 Brak zaraportowanych godzin w tym projekcie</p>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .info-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.25rem;
+        font-weight: 500;
+    }
+
+    .info-value {
+        font-size: 1.125rem;
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    .stat-box {
+        padding: 1.5rem;
+        background: var(--bg-secondary);
+        border: 2px solid var(--border-light);
+        border-radius: 12px;
+        text-align: center;
+        transition: all var(--transition);
+    }
+
+    .stat-box:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .badge-success {
+        background: rgba(34, 197, 94, 0.1);
+        color: #22c55e;
+    }
+
+    .badge-info {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+    }
+
+    .badge-warning {
+        background: rgba(234, 179, 8, 0.1);
+        color: #eab308;
+    }
+
+    .badge-secondary {
+        background: rgba(148, 163, 184, 0.1);
+        color: #94a3b8;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-secondary);
+    }
+
+    .empty-state p {
+        font-size: 1.125rem;
+        margin: 0;
+    }
+
+    .text-muted {
+        color: var(--text-tertiary);
+    }
+</style>
