@@ -52,10 +52,6 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
 
     protected virtual void SeedTestData(ApplicationDbContext db)
     {
-        // ✅ Hashujemy hasła tutaj - zawsze te same plaintext hasła = te same hashe dla BCrypt z tym samym salt
-        // Ale BCrypt.Net używa losowego salt, więc użyjemy PROSTYCH hasły
-        // Rozwiązanie: hashowanie NA POCZĄTKU z BCrypt.HashPassword()
-        
         var adminUser = new User
         {
             Id = 1,
@@ -98,7 +94,8 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             UserId = 1,
             Position = "Administrator",
             Department = "IT",
-            HireDate = DateTime.UtcNow.AddYears(-2)
+            HireDate = DateTime.UtcNow.AddYears(-2),
+            IsActive = true
         };
 
         var managerEmployee = new Employee
@@ -107,7 +104,8 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             UserId = 2,
             Position = "Team Manager",
             Department = "Management",
-            HireDate = DateTime.UtcNow.AddYears(-1)
+            HireDate = DateTime.UtcNow.AddYears(-1),
+            IsActive = true
         };
 
         var employeeEmployee = new Employee
@@ -116,18 +114,23 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             UserId = 3,
             Position = "Software Developer",
             Department = "Development",
-            HireDate = DateTime.UtcNow.AddMonths(-6)
+            HireDate = DateTime.UtcNow.AddMonths(-6),
+            IsActive = true
         };
 
         db.Employees.AddRange(adminEmployee, managerEmployee, employeeEmployee);
+        db.SaveChanges(); // ✅ Zapisz użytkowników i pracowników PRZED projektami
 
-        // Test projects
+        // Test projects - ✅ TERAZ z ManagerId!
         var project1 = new Project
         {
             Id = 1,
             Name = "Project Alpha",
             Description = "Test project Alpha",
-            IsActive = true
+            IsActive = true,
+            Status = ProjectStatus.Active,
+            StartDate = DateTime.UtcNow.AddMonths(-3),
+            ManagerId = 2 // ✅ Manager (Id=2)
         };
 
         var project2 = new Project
@@ -135,12 +138,16 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             Id = 2,
             Name = "Project Beta",
             Description = "Test project Beta",
-            IsActive = true
+            IsActive = true,
+            Status = ProjectStatus.Active,
+            StartDate = DateTime.UtcNow.AddMonths(-2),
+            ManagerId = 2 // ✅ Manager (Id=2)
         };
 
         db.Projects.AddRange(project1, project2);
+        db.SaveChanges(); // ✅ Zapisz projekty
 
-        // Assign employee to project
+        // Assign employee to projects
         employeeEmployee.Projects.Add(project1);
         employeeEmployee.Projects.Add(project2);
 
