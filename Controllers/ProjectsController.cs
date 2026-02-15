@@ -196,11 +196,15 @@ namespace TimeTrackerApp.Controllers
                     if (projekt == null)
                         return NotFound();
 
-                    // aktualizujemy dane projektu
+                    // aktualizujemy WSZYSTKIE dane projektu
                     projekt.Name = model.Name;
                     projekt.Description = model.Description;
+                    projekt.Status = model.Status;
+                    projekt.StartDate = model.StartDate;
+                    projekt.EndDate = model.EndDate;
                     projekt.HoursBudget = model.HoursBudget;
                     projekt.ManagerId = model.ManagerId;
+                    projekt.IsActive = model.IsActive;
 
                     // aktualizujemy przypisanych pracowników
                     projekt.Employees.Clear();
