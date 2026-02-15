@@ -90,6 +90,10 @@ namespace TimeTrackerApp.Controllers
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
             var user = await _context.Users.FindAsync(userId);
 
+            // Usuń błędy walidacji dla kolekcji (wyświetlane w widoku, ale nie są częścią modelu)
+            ModelState.Remove("Employees");
+            ModelState.Remove("Projects");
+
             if (!ModelState.IsValid)
             {
                 var employeesQuery = _context.Employees.Include(e => e.User).AsQueryable();
@@ -224,6 +228,10 @@ namespace TimeTrackerApp.Controllers
 
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
             var user = await _context.Users.FindAsync(userId);
+
+            // Usuń błędy walidacji dla kolekcji (wyświetlane w widoku, ale nie są częścią modelu)
+            ModelState.Remove("Employees");
+            ModelState.Remove("Projects");
 
             if (!ModelState.IsValid)
             {
