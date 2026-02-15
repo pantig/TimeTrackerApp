@@ -16,8 +16,26 @@
             {
                 <a asp-controller="Calendar" asp-action="Index">Kalendarz</a>
                 <a asp-controller="TimeEntries" asp-action="Index">Wpisy</a>
-                <a asp-controller="Reports" asp-action="Summary">Raporty</a>
-                <a asp-controller="Reports" asp-action="Monthly">Raport miesięczny</a>
+                
+                <!-- Dropdown Raporty -->
+                <div class="dropdown">
+                    <button class="dropdown-toggle" id="reportsDropdown">Raporty ▼</button>
+                    <div class="dropdown-menu" id="reportsMenu">
+                        <a asp-controller="Reports" asp-action="Summary" class="dropdown-item">Raport zbiorczy</a>
+                        <a asp-controller="Reports" asp-action="Monthly" class="dropdown-item">Raport miesięczny</a>
+                        
+                        @if (User.IsInRole("Employee"))
+                        {
+                            <a asp-controller="NoProjectReport" asp-action="MyEntries" class="dropdown-item" style="color: #eab308;">⚠️ Moje bez projektu</a>
+                        }
+                        
+                        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                        {
+                            <a asp-controller="NoProjectReport" asp-action="AllEntries" class="dropdown-item" style="color: #eab308;">⚠️ Wszystkie bez projektu</a>
+                        }
+                    </div>
+                </div>
+                
                 @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
                 {
                     <a asp-controller="Projects" asp-action="Index">Projekty</a>
@@ -38,12 +56,46 @@
 </nav>
 
 <div class="container">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    }
     @RenderBody()
 </div>
 
 <footer class="footer">
     <p>&copy; 2026 System Rejestracji Czasu Pracy - Projekt Zaliczeniowy</p>
 </footer>
+
+<script>
+    // Dropdown menu functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropdown = document.querySelector('.dropdown');
+        const dropdownToggle = document.getElementById('reportsDropdown');
+        const dropdownMenu = document.getElementById('reportsMenu');
+        
+        if (dropdown && dropdownToggle && dropdownMenu) {
+            dropdownToggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                dropdown.classList.toggle('active');
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function() {
+                dropdown.classList.remove('active');
+            });
+            
+            // Prevent closing when clicking inside menu
+            dropdownMenu.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+        }
+    });
+</script>
 
 @RenderSection("Scripts", required: false)
 </body>

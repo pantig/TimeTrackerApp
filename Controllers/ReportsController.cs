@@ -213,6 +213,16 @@ namespace TimeTrackerApp.Controllers
                 return Forbid();
             }
 
+            // ✅ NOWE - sprawdzamy czy pracownik ma wpisy bez projektu
+            var hasEntriesWithoutProject = await _context.TimeEntries
+                .AnyAsync(e => e.EmployeeId == employeeId && e.ProjectId == null);
+
+            if (hasEntriesWithoutProject)
+            {
+                TempData["ErrorMessage"] = "Nie możesz wyeksportować raportu - istnieją wpisy bez przypisanego projektu. Uzupełnij je w zakładce '⚠️ Brak projektu'.";
+                return RedirectToAction("Monthly", new { employeeId, year, month });
+            }
+
             var dataOd = new DateTime(year, month, 1);
             var dataDo = dataOd.AddMonths(1).AddDays(-1);
 

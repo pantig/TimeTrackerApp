@@ -10,11 +10,11 @@ namespace TimeTrackerApp.Models
         [Required]
         [ForeignKey("Employee")]
         public int EmployeeId { get; set; }
-        public virtual Employee Employee { get; set; }
+        public virtual Employee Employee { get; set; } = null!;
 
         [ForeignKey("Project")]
         public int? ProjectId { get; set; }
-        public virtual Project Project { get; set; }
+        public virtual Project? Project { get; set; }
 
         [Required(ErrorMessage = "Data wpisu jest wymagana")]
         public DateTime EntryDate { get; set; }
@@ -26,13 +26,13 @@ namespace TimeTrackerApp.Models
         public TimeSpan EndTime { get; set; }
 
         [MaxLength(500)]
-        public string Description { get; set; }
+        public string Description { get; set; } = string.Empty;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         [ForeignKey("User")]
         public int CreatedBy { get; set; }
-        public virtual User CreatedByUser { get; set; }
+        public virtual User CreatedByUser { get; set; } = null!;
 
         // Właściwość obliczona
         [NotMapped]

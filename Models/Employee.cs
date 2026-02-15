@@ -9,11 +9,11 @@ namespace TimeTrackerApp.Models
 
         [Required(ErrorMessage = "Stanowisko jest wymagane")]
         [MaxLength(200)]
-        public string Position { get; set; }
+        public string Position { get; set; } = null!;
 
         [Required(ErrorMessage = "Departament jest wymagany")]
         [MaxLength(200)]
-        public string Department { get; set; }
+        public string Department { get; set; } = null!;
 
         public DateTime HireDate { get; set; } = DateTime.UtcNow;
 
@@ -22,7 +22,7 @@ namespace TimeTrackerApp.Models
         // Klucz obcy
         [ForeignKey("User")]
         public int UserId { get; set; }
-        public virtual User User { get; set; }
+        public virtual User User { get; set; } = null!;
 
         // Nawigacja
         public virtual ICollection<TimeEntry> TimeEntries { get; set; } = new List<TimeEntry>();
