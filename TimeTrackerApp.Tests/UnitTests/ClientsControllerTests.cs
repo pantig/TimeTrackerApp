@@ -187,7 +187,7 @@ public class ClientsControllerTests : IDisposable
     public async Task Index_ReturnsViewWithClients()
     {
         // Act
-        var result = await _controller.Index(null); // ✅ FIXED: Dodano parametr searchName
+        var result = await _controller.Index(null);
 
         // Assert
         result.Should().BeOfType<ViewResult>();
