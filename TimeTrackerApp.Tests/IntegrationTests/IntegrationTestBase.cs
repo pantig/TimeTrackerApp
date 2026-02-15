@@ -41,15 +41,11 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             });
         });
 
-        Client = CreateClient();
-    }
-
-    protected HttpClient CreateClient()
-    {
-        return Factory.CreateClient(new WebApplicationFactoryClientOptions
+        // ✅ Tworzymy Client JEDEN RAZ w konstruktorze
+        Client = Factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
-            HandleCookies = true  // ✅ Kluczowe!
+            HandleCookies = true  // 🔑 Kluczowe!
         });
     }
 
@@ -159,9 +155,9 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
 
     protected async Task LoginAsAsync(string email, string password)
     {
-        // Create a new client with cookie handling
-        Client = CreateClient();
-
+        // ✅ NIE tworzymy nowego klienta - używamy istniejącego!
+        // HttpClient z HandleCookies=true automatycznie przechowuje ciasteczka
+        
         var loginData = new FormUrlEncodedContent(new[]
         {
             new KeyValuePair<string, string>("Email", email),
@@ -170,7 +166,6 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
 
         var response = await Client.PostAsync("/Account/Login", loginData);
         
-        // HttpClient with HandleCookies=true automatically stores and sends cookies
-        // No need to manually extract and set them
+        // HttpClient automatycznie zapisuje Set-Cookie i wysyła je w kolejnych requestach
     }
 }
