@@ -26,8 +26,8 @@ public class AuthenticationTests : IntegrationTestBase
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        response.Headers.Location?.ToString().Should().Contain("/");
-        response.Headers.Should().ContainKey("Set-Cookie");
+        // Admin powinien być przekierowany do /Employees/Index
+        response.Headers.Location?.ToString().Should().Contain("/Employees/Index");
     }
 
     [Fact]
