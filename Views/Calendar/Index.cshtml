@@ -177,12 +177,21 @@
         <div class="modal-body">
             <input type="hidden" id="entryId" value="" />
             <input type="hidden" id="entryDate" value="" />
-            <input type="hidden" id="entryStartTime" value="" />
-            <input type="hidden" id="entryEndTime" value="" />
 
             <div class="form-group">
                 <label>Czas</label>
-                <div id="timeDisplay" class="time-display"></div>
+                <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.75rem; align-items: center;">
+                    <div>
+                        <label style="font-size: 0.875rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">Od</label>
+                        <input type="time" id="entryStartTime" class="form-control" step="900" required />
+                    </div>
+                    <span style="margin-top: 1.5rem; color: var(--text-tertiary);">—</span>
+                    <div>
+                        <label style="font-size: 0.875rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">Do</label>
+                        <input type="time" id="entryEndTime" class="form-control" step="900" required />
+                    </div>
+                </div>
+                <div id="durationDisplay" style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);"></div>
             </div>
 
             <div class="form-group">
@@ -198,7 +207,7 @@
 
             <div class="form-group">
                 <label for="descriptionInput">Opis</label>
-                <textarea id="descriptionInput" class="form-control" rows="3" placeholder="Opisz wykonywaną pracę..."></textarea>
+                <textarea id="descriptionInput" class="form-control" rows="3" placeholder="Opisz wykonywną pracę..."></textarea>
             </div>
         </div>
         <div class="modal-footer">
@@ -307,6 +316,41 @@ async function removeDayMarker(date) {
     }
 }
 
+// Update duration display when time changes
+function updateDurationDisplay() {
+    const startInput = document.getElementById('entryStartTime');
+    const endInput = document.getElementById('entryEndTime');
+    const durationDiv = document.getElementById('durationDisplay');
+    
+    if (!startInput.value || !endInput.value) {
+        durationDiv.textContent = '';
+        return;
+    }
+    
+    const [startH, startM] = startInput.value.split(':').map(Number);
+    const [endH, endM] = endInput.value.split(':').map(Number);
+    
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    const durationMinutes = endMinutes - startMinutes;
+    
+    if (durationMinutes <= 0) {
+        durationDiv.textContent = '⚠️ Czas zakończenia musi być późniejszy niż czas rozpoczęcia';
+        durationDiv.style.color = 'var(--danger)';
+        return;
+    }
+    
+    const hours = Math.floor(durationMinutes / 60);
+    const minutes = durationMinutes % 60;
+    
+    let durationText = 'Czas trwania: ';
+    if (hours > 0) durationText += `${hours}h `;
+    if (minutes > 0) durationText += `${minutes}min`;
+    
+    durationDiv.textContent = durationText;
+    durationDiv.style.color = 'var(--text-secondary)';
+}
+
 // Mouse selection for creating new entries
 document.querySelectorAll('.timegrid-day-col').forEach(dayCol => {
     const cells = dayCol.querySelector('.timegrid-day-cells');
@@ -371,11 +415,16 @@ function openModalForNewEntry() {
     document.getElementById('modalTitle').textContent = 'Nowy wpis czasu';
     document.getElementById('entryId').value = '';
     document.getElementById('entryDate').value = date;
-    document.getElementById('entryStartTime').value = `${min.toString().padStart(2, '0')}:00:00`;
-    document.getElementById('entryEndTime').value = `${max.toString().padStart(2, '0')}:00:00`;
-    document.getElementById('timeDisplay').textContent = `${min.toString().padStart(2, '0')}:00 – ${max.toString().padStart(2, '0')}:00`;
+    document.getElementById('entryStartTime').value = `${min.toString().padStart(2, '0')}:00`;
+    document.getElementById('entryEndTime').value = `${max.toString().padStart(2, '0')}:00`;
     document.getElementById('projectSelect').value = '';
     document.getElementById('descriptionInput').value = '';
+    
+    updateDurationDisplay();
+    
+    // Add event listeners for time inputs
+    document.getElementById('entryStartTime').addEventListener('change', updateDurationDisplay);
+    document.getElementById('entryEndTime').addEventListener('change', updateDurationDisplay);
     
     document.getElementById('entryModal').style.display = 'flex';
 }
@@ -394,11 +443,16 @@ function editEntry(entryId) {
     document.getElementById('modalTitle').textContent = 'Edytuj wpis';
     document.getElementById('entryId').value = entryId;
     document.getElementById('entryDate').value = date;
-    document.getElementById('entryStartTime').value = startTime;
-    document.getElementById('entryEndTime').value = endTime;
-    document.getElementById('timeDisplay').textContent = `${startTime.substring(0, 5)} – ${endTime.substring(0, 5)}`;
+    document.getElementById('entryStartTime').value = startTime.substring(0, 5);
+    document.getElementById('entryEndTime').value = endTime.substring(0, 5);
     document.getElementById('projectSelect').value = projectId;
     document.getElementById('descriptionInput').value = description;
+    
+    updateDurationDisplay();
+    
+    // Add event listeners for time inputs
+    document.getElementById('entryStartTime').addEventListener('change', updateDurationDisplay);
+    document.getElementById('entryEndTime').addEventListener('change', updateDurationDisplay);
     
     document.getElementById('entryModal').style.display = 'flex';
 }
@@ -433,10 +487,21 @@ function closeModal() {
 async function saveEntry() {
     const entryId = document.getElementById('entryId').value;
     const date = document.getElementById('entryDate').value;
-    const startTime = document.getElementById('entryStartTime').value;
-    const endTime = document.getElementById('entryEndTime').value;
+    const startTime = document.getElementById('entryStartTime').value + ':00';
+    const endTime = document.getElementById('entryEndTime').value + ':00';
     const projectId = document.getElementById('projectSelect').value || null;
     const description = document.getElementById('descriptionInput').value;
+    
+    // Walidacja czasu
+    const [startH, startM] = document.getElementById('entryStartTime').value.split(':').map(Number);
+    const [endH, endM] = document.getElementById('entryEndTime').value.split(':').map(Number);
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    
+    if (endMinutes <= startMinutes) {
+        alert('Czas zakończenia musi być późniejszy niż czas rozpoczęcia');
+        return;
+    }
     
     if (entryId) {
         // Update existing
@@ -447,6 +512,8 @@ async function saveEntry() {
             },
             body: JSON.stringify({
                 id: parseInt(entryId),
+                startTime: startTime,
+                endTime: endTime,
                 projectId: projectId ? parseInt(projectId) : null,
                 description: description
             })
