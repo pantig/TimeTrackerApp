@@ -68,7 +68,6 @@ namespace TimeTrackerApp.Controllers
         }
 
         [HttpPost]
-        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Project model, int[] selectedEmployees)
         {
             // DEBUG: Wypisz wszystkie błędy walidacji
@@ -184,7 +183,6 @@ namespace TimeTrackerApp.Controllers
         }
 
         [HttpPost]
-        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, Project model, int[] selectedEmployees)
         {
             if (id != model.Id)
@@ -291,8 +289,7 @@ namespace TimeTrackerApp.Controllers
         }
 
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> Delete(int id, string dummy) // Zmieniony podpis metody
         {
             var projekt = await _context.Projects
                 .Include(p => p.TimeEntries)

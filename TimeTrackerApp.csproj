@@ -16,4 +16,11 @@
     <PackageReference Include="EPPlus" Version="7.0.0" />
   </ItemGroup>
 
+  <!-- Exclude test project folder from main project compilation -->
+  <ItemGroup>
+    <Compile Remove="TimeTrackerApp.Tests/**" />
+    <EmbeddedResource Remove="TimeTrackerApp.Tests/**" />
+    <None Remove="TimeTrackerApp.Tests/**" />
+  </ItemGroup>
+
 </Project>

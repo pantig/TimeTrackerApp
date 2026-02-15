@@ -34,9 +34,9 @@ namespace TimeTrackerApp.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
-            var user = _context.Users.FirstOrDefault(u => u.Email == model.Email && u.IsActive);
+            var user = _context.Users.FirstOrDefault(u => u.Email == model.Email);
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
+            if (user == null || !user.IsActive || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
             {
                 ModelState.AddModelError("", "Nieprawidłowy email lub hasło");
                 return View(model);
@@ -112,7 +112,8 @@ namespace TimeTrackerApp.Controllers
                 FirstName = model.FirstName,
                 LastName = model.LastName,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password),
-                Role = UserRole.Employee
+                Role = UserRole.Employee,
+                IsActive = true
             };
 
             _context.Users.Add(user);

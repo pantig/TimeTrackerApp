@@ -24,8 +24,12 @@ namespace TimeTrackerApp.Controllers
 
         public async Task<IActionResult> Index()
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Challenge();
+
+            var userId = int.Parse(userIdClaim.Value);
             var user = await _context.Users.FindAsync(userId);
+            if (user == null) return Challenge();
 
             var query = _context.TimeEntries
                 .Include(t => t.Employee)
@@ -36,9 +40,11 @@ namespace TimeTrackerApp.Controllers
 
             if (user.Role == UserRole.Employee)
             {
-                var employee = _context.Employees.FirstOrDefault(e => e.UserId == userId);
+                var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
                 if (employee != null)
                     query = query.Where(t => t.EmployeeId == employee.Id);
+                else
+                    query = query.Where(t => false); // Brak powiązanego pracownika
             }
 
             var timeEntries = await query.OrderByDescending(t => t.EntryDate).ToListAsync();
@@ -49,8 +55,12 @@ namespace TimeTrackerApp.Controllers
         [HttpGet]
         public async Task<IActionResult> Create(DateTime? date)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Challenge();
+
+            var userId = int.Parse(userIdClaim.Value);
             var user = await _context.Users.FindAsync(userId);
+            if (user == null) return Challenge();
 
             var employees = _context.Employees.Include(e => e.User).AsQueryable();
             if (user.Role == UserRole.Employee)
@@ -87,8 +97,12 @@ namespace TimeTrackerApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(TimeEntryViewModel model)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Challenge();
+
+            var userId = int.Parse(userIdClaim.Value);
             var user = await _context.Users.FindAsync(userId);
+            if (user == null) return Challenge();
 
             // Usuń błędy walidacji dla kolekcji (wyświetlane w widoku, ale nie są częścią modelu)
             ModelState.Remove("Employees");
@@ -128,7 +142,7 @@ namespace TimeTrackerApp.Controllers
                 if (employee == null || model.EmployeeId != employee.Id)
                 {
                     ModelState.AddModelError("", "Nie masz uprawnień do dodawania wpisów dla innych pracowników.");
-                    model.Employees = new List<Employee> { employee };
+                    model.Employees = employee != null ? new List<Employee> { employee } : new List<Employee>();
                     model.Projects = employee?.Projects.Where(p => p.IsActive).ToList() ?? new List<Project>();
                     return View(model);
                 }
@@ -168,8 +182,12 @@ namespace TimeTrackerApp.Controllers
         [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Challenge();
+
+            var userId = int.Parse(userIdClaim.Value);
             var user = await _context.Users.FindAsync(userId);
+            if (user == null) return Challenge();
 
             var timeEntry = await _context.TimeEntries.FindAsync(id);
             if (timeEntry == null)
@@ -226,8 +244,12 @@ namespace TimeTrackerApp.Controllers
             if (id != model.Id)
                 return BadRequest();
 
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Challenge();
+
+            var userId = int.Parse(userIdClaim.Value);
             var user = await _context.Users.FindAsync(userId);
+            if (user == null) return Challenge();
 
             // Usuń błędy walidacji dla kolekcji (wyświetlane w widoku, ale nie są częścią modelu)
             ModelState.Remove("Employees");
@@ -301,8 +323,12 @@ namespace TimeTrackerApp.Controllers
         [HttpGet]
         public async Task<IActionResult> Delete(int id)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Challenge();
+
+            var userId = int.Parse(userIdClaim.Value);
             var user = await _context.Users.FindAsync(userId);
+            if (user == null) return Challenge();
 
             var timeEntry = await _context.TimeEntries
                 .Include(t => t.Employee)
@@ -326,8 +352,12 @@ namespace TimeTrackerApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Challenge();
+
+            var userId = int.Parse(userIdClaim.Value);
             var user = await _context.Users.FindAsync(userId);
+            if (user == null) return Challenge();
 
             var timeEntry = await _context.TimeEntries.FindAsync(id);
             if (timeEntry == null)
@@ -343,7 +373,6 @@ namespace TimeTrackerApp.Controllers
 
             _context.TimeEntries.Remove(timeEntry);
             await _context.SaveChangesAsync();
-
             return RedirectToAction(nameof(Index));
         }
     }

@@ -1,73 +1,48 @@
-﻿using TimeTrackerApp.Data;
-using TimeTrackerApp.Repositories;
-using TimeTrackerApp.Services;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
+using TimeTrackerApp.Data;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using TimeTrackerApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Dodaj DbContext
+// Add services to the container.
+builder.Services.AddControllersWithViews();
+
+// Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Rejestracja serwisów
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+// Services
 builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();
 builder.Services.AddScoped<ExcelExportService>();
 
-// Autentykacja
+// Authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         options.LoginPath = "/Account/Login";
         options.LogoutPath = "/Account/Logout";
         options.AccessDeniedPath = "/Account/AccessDenied";
-        options.Cookie.Name = "TimeTrackerAuth";
-        options.Cookie.HttpOnly = true;
-        options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = true;
-        options.Cookie.IsEssential = true;
-        options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     });
 
 builder.Services.AddAuthorization();
-builder.Services.AddControllersWithViews();
+
+// Add HttpContextAccessor
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
-// Inicjalizacja bazy danych
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    if (context.Database.EnsureCreated())
-    {
-        DbInitializer.Initialize(context);
-    }
-    else
-    {
-        // Jeśli baza istnieje, upewnij się że dane testowe są poprawne
-        DbInitializer.Initialize(context);
-    }
-}
-
+// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
 
-// app.UseHttpsRedirection();
+app.UseHttpsRedirection();
 app.UseStaticFiles();
-
-var supportedCultures = new[] { "en-US", "pl-PL" };
-var localizationOptions = new RequestLocalizationOptions()
-    .SetDefaultCulture("en-US")
-    .AddSupportedCultures(supportedCultures)
-    .AddSupportedUICultures(supportedCultures);
-
-app.UseRequestLocalization(localizationOptions);
 
 app.UseRouting();
 
@@ -76,6 +51,29 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=TimeEntries}/{action=Index}/{id?}");
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+// Apply migrations automatically (only for relational databases)
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    
+    // Only migrate if using a relational database (not InMemory for tests)
+    if (db.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory")
+    {
+        if (db.Database.IsRelational())
+        {
+            db.Database.Migrate();
+        }
+    }
+    else
+    {
+        // For InMemory, just ensure the database is created
+        db.Database.EnsureCreated();
+    }
+}
 
 app.Run();
+
+// Make Program class accessible for integration tests
+public partial class Program { }

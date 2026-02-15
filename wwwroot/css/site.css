@@ -630,6 +630,7 @@ select.input {
 .timegrid-hour-cell[data-hour="22"] { top: 1320px; }
 .timegrid-hour-cell[data-hour="23"] { top: 1380px; }
 
+/* === TIME ENTRY STYLES === */
 .timegrid-entry {
   position: absolute;
   left: 4px;
@@ -641,9 +642,10 @@ select.input {
   font-size: 0.8125rem;
   overflow: hidden;
   box-shadow: var(--shadow-sm);
-  cursor: pointer;
+  cursor: move;
   z-index: 20;
   transition: all var(--transition);
+  user-select: none;
 }
 
 .timegrid-entry:hover {
@@ -652,6 +654,16 @@ select.input {
   transform: translateX(-2px);
   left: 2px;
   right: 2px;
+}
+
+.timegrid-entry.dragging {
+  opacity: 0.3;
+  cursor: grabbing;
+}
+
+.timegrid-entry.resizing {
+  cursor: ns-resize !important;
+  z-index: 50;
 }
 
 .timegrid-entry.approved {
@@ -666,6 +678,7 @@ select.input {
   font-weight: 600;
   font-size: 0.75rem;
   margin-bottom: 2px;
+  pointer-events: none;
 }
 
 .entry-project {
@@ -675,6 +688,7 @@ select.input {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  pointer-events: none;
 }
 
 .entry-desc {
@@ -684,6 +698,7 @@ select.input {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  pointer-events: none;
 }
 
 .entry-created-by {
@@ -691,6 +706,7 @@ select.input {
   opacity: 0.75;
   margin-top: 2px;
   font-style: italic;
+  pointer-events: none;
 }
 
 .entry-edit,
@@ -710,6 +726,7 @@ select.input {
   justify-content: center;
   opacity: 0;
   transition: all var(--transition);
+  z-index: 10;
 }
 
 .timegrid-entry:hover .entry-edit,
@@ -733,11 +750,118 @@ select.input {
   background: var(--danger);
 }
 
+/* === DRAG PREVIEW === */
+.drag-preview {
+  position: fixed;
+  background: var(--accent);
+  color: white;
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  font-size: 0.875rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 1;
+  border: 3px solid rgba(255, 255, 255, 0.5);
+  min-width: 140px;
+  transform: scale(1.05);
+}
+
+.drag-preview .entry-time {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+  animation: pulse 1s ease-in-out infinite;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.drag-preview .entry-project {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  opacity: 0.95;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.drag-preview .entry-desc {
+  font-size: 0.875rem;
+  opacity: 0.85;
+  margin-top: 4px;
+}
+
+.drag-preview .entry-edit,
+.drag-preview .entry-delete,
+.drag-preview .resize-handle,
+.drag-preview .entry-created-by {
+  display: none !important;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
+}
+
+/* === RESIZE HANDLES === */
+.resize-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: transparent;
+  cursor: ns-resize;
+  z-index: 25;
+  transition: all var(--transition);
+}
+
+.resize-handle-top {
+  top: 0;
+  border-top: 2px solid transparent;
+}
+
+.resize-handle-bottom {
+  bottom: 0;
+  border-bottom: 2px solid transparent;
+}
+
+.timegrid-entry:hover .resize-handle-top {
+  border-top-color: rgba(255, 255, 255, 0.6);
+}
+
+.timegrid-entry:hover .resize-handle-bottom {
+  border-bottom-color: rgba(255, 255, 255, 0.6);
+}
+
+.resize-handle:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.resize-handle-top:hover {
+  border-top-color: white !important;
+}
+
+.resize-handle-bottom:hover {
+  border-bottom-color: white !important;
+}
+
+/* === LEGEND === */
 .timegrid-legend {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
   margin-top: var(--space-lg);
+}
+
+.timegrid-legend .hint {
+  padding: var(--space-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--accent);
 }
 
 .badge {

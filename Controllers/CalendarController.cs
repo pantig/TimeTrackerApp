@@ -30,6 +30,7 @@ namespace TimeTrackerApp.Controllers
         {
             // tutaj pobieramy aktualnego zalogowanego użytkownika
             var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
+            if (aktualnyUzytkownik == null) return Challenge();
             
             Employee? wybranyPracownik;
             List<Employee>? wszyscyPracownicy = null;
@@ -176,6 +177,8 @@ namespace TimeTrackerApp.Controllers
         public async Task<IActionResult> AddEntry([FromBody] AddEntryRequest request)
         {
             var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
+            if (aktualnyUzytkownik == null) return Unauthorized();
+
             var pracownik = await _context.Employees
                 .Include(e => e.Projects)
                 .FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
@@ -202,13 +205,19 @@ namespace TimeTrackerApp.Controllers
 
                 if (celPracownik != null)
                 {
-                    // pracownik może rejestrować czas tylko w przypisanych projektach
+                    // pracownik może rejestrowaC czas tylko w przypisanych projektach
                     var czyPrzypisany = celPracownik.Projects.Any(p => p.Id == request.ProjectId.Value);
                     if (!czyPrzypisany)
                     {
                         return Json(new { success = false, message = "Nie jesteś przypisany do tego projektu" });
                     }
                 }
+            }
+
+            // walidacja czasu
+            if (request.EndTime <= request.StartTime)
+            {
+                return Json(new { success = false, message = "Godzina zakończenia musi być później niż godzina rozpoczęcia" });
             }
 
             // tworzymy nowy wpis czasu
@@ -240,6 +249,8 @@ namespace TimeTrackerApp.Controllers
             }
 
             var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
+            if (aktualnyUzytkownik == null) return Unauthorized();
+
             var pracownik = await _context.Employees
                 .Include(e => e.Projects)
                 .FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
@@ -269,7 +280,29 @@ namespace TimeTrackerApp.Controllers
                 }
             }
 
-            // aktualizujemy dane
+            // walidacja czasu
+            if (request.StartTime.HasValue && request.EndTime.HasValue && request.EndTime.Value <= request.StartTime.Value)
+            {
+                return Json(new { success = false, message = "Godzina zakończenia musi być później niż godzina rozpoczęcia" });
+            }
+            else if (!request.StartTime.HasValue && request.EndTime.HasValue && request.EndTime.Value <= wpis.StartTime)
+            {
+                return Json(new { success = false, message = "Godzina zakończenia musi być później niż godzina rozpoczęcia" });
+            }
+            else if (request.StartTime.HasValue && !request.EndTime.HasValue && wpis.EndTime <= request.StartTime.Value)
+            {
+                return Json(new { success = false, message = "Godzina zakończenia musi być później niż godzina rozpoczęcia" });
+            }
+
+            // aktualizujemy dane (włącznie z czasem!)
+            if (request.StartTime.HasValue)
+            {
+                wpis.StartTime = request.StartTime.Value;
+            }
+            if (request.EndTime.HasValue)
+            {
+                wpis.EndTime = request.EndTime.Value;
+            }
             wpis.ProjectId = request.ProjectId;
             wpis.Description = request.Description;
 
@@ -288,6 +321,8 @@ namespace TimeTrackerApp.Controllers
             }
 
             var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
+            if (aktualnyUzytkownik == null) return Unauthorized();
+
             var pracownik = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
 
             // tylko właściciel lub admin/manager może usunąć
@@ -306,6 +341,8 @@ namespace TimeTrackerApp.Controllers
         public async Task<IActionResult> SetDayMarker([FromBody] SetDayMarkerRequest request)
         {
             var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
+            if (aktualnyUzytkownik == null) return Unauthorized();
+
             var pracownik = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
 
             if (pracownik == null && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
@@ -351,6 +388,8 @@ namespace TimeTrackerApp.Controllers
         public async Task<IActionResult> RemoveDayMarker([FromBody] RemoveDayMarkerRequest request)
         {
             var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
+            if (aktualnyUzytkownik == null) return Unauthorized();
+
             var pracownik = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
 
             if (pracownik == null && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
@@ -376,10 +415,16 @@ namespace TimeTrackerApp.Controllers
         }
 
         // metody pomocnicze
-        private async Task<User> PobierzAktualnegoUzytkownika()
+        private async Task<User?> PobierzAktualnegoUzytkownika()
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            return await _context.Users.FindAsync(userId);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return null;
+
+            if (int.TryParse(userIdClaim.Value, out var userId))
+            {
+                return await _context.Users.FindAsync(userId);
+            }
+            return null;
         }
 
         private bool CzyMaUprawnienia(UserRole rola)
@@ -408,6 +453,8 @@ namespace TimeTrackerApp.Controllers
     public class UpdateEntryRequest
     {
         public int Id { get; set; }
+        public TimeSpan? StartTime { get; set; }
+        public TimeSpan? EndTime { get; set; }
         public int? ProjectId { get; set; }
         public string? Description { get; set; }
     }

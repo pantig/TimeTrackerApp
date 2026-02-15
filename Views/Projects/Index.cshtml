@@ -33,7 +33,7 @@
                 var isOverBudget = project.HoursBudget.HasValue && totalHours > project.HoursBudget.Value;
                 var rowStyle = isOverBudget ? "border-left: 3px solid var(--danger); background: rgba(239, 68, 68, 0.05);" : "";
 
-                <tr style="@rowStyle">
+                <tr style="@Html.Raw(rowStyle)">
                     <td>
                         <strong>@project.Name</strong>
                         @if (isOverBudget)
