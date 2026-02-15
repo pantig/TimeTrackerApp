@@ -51,6 +51,15 @@ namespace TimeTrackerApp.Data
                 .WithMany(p => p.Employees)
                 .UsingEntity("EmployeeProject");
 
+            // Project - Manager (Employee) - relacja 1:many
+            // Każdy projekt ma jednego opiekuna (Manager)
+            // Każdy Employee może być opiekunem wielu projektów
+            modelBuilder.Entity<Project>()
+                .HasOne(p => p.Manager)
+                .WithMany()  // Employee nie ma kolekcji ManagedProjects
+                .HasForeignKey(p => p.ManagerId)
+                .OnDelete(DeleteBehavior.Restrict);  // nie usuwamy projektów gdy usuwamy managera
+
             // User - TimeEntry (created by)
             modelBuilder.Entity<TimeEntry>()
                 .HasOne(t => t.CreatedByUser)
