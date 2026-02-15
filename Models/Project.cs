@@ -32,6 +32,12 @@ namespace TimeTrackerApp.Models
         public int ManagerId { get; set; }
         public virtual Employee Manager { get; set; }
 
+        // Klient projektu - WYMAGANE
+        [Required(ErrorMessage = "Klient projektu jest wymagany")]
+        [ForeignKey("Client")]
+        public int ClientId { get; set; }
+        public virtual Client Client { get; set; }
+
         // Nawigacja
         public virtual ICollection<TimeEntry> TimeEntries { get; set; } = new List<TimeEntry>();
         public virtual ICollection<Employee> Employees { get; set; } = new List<Employee>();

@@ -62,8 +62,15 @@ namespace TimeTrackerApp.Controllers
                 .ThenBy(e => e.User.FirstName)
                 .ToList();
 
+            // ✅ FIXED: Dodanie klientów do ViewBag
+            var klienci = await _context.Clients
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+
             ViewBag.Employees = pracownicy;
             ViewBag.Managers = kierownicy;
+            ViewBag.Clients = klienci;
             return View();
         }
 
@@ -81,6 +88,7 @@ namespace TimeTrackerApp.Controllers
 
             // Usuń błędy dla właściwości nawigacyjnych (EF wypełni je automatycznie)
             ModelState.Remove("Manager");
+            ModelState.Remove("Client");
             ModelState.Remove("TimeEntries");
             ModelState.Remove("Employees");
 
@@ -141,8 +149,15 @@ namespace TimeTrackerApp.Controllers
                 .ThenBy(e => e.User.FirstName)
                 .ToList();
 
+            // ✅ FIXED: Dodanie klientów
+            var klienci = await _context.Clients
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+
             ViewBag.Employees = listaPracownikow;
             ViewBag.Managers = kierownicy;
+            ViewBag.Clients = klienci;
             return View(model);
         }
 
@@ -177,8 +192,15 @@ namespace TimeTrackerApp.Controllers
                 .ThenBy(e => e.User.FirstName)
                 .ToList();
 
+            // ✅ FIXED: Dodanie klientów do ViewBag
+            var klienci = await _context.Clients
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+
             ViewBag.Employees = pracownicy;
             ViewBag.Managers = kierownicy;
+            ViewBag.Clients = klienci;
             return View(projekt);
         }
 
@@ -199,6 +221,7 @@ namespace TimeTrackerApp.Controllers
 
             // Usuń błędy dla właściwości nawigacyjnych (EF wypełni je automatycznie)
             ModelState.Remove("Manager");
+            ModelState.Remove("Client");
             ModelState.Remove("TimeEntries");
             ModelState.Remove("Employees");
 
@@ -230,6 +253,7 @@ namespace TimeTrackerApp.Controllers
                     projekt.EndDate = model.EndDate;
                     projekt.HoursBudget = model.HoursBudget;
                     projekt.ManagerId = model.ManagerId;
+                    projekt.ClientId = model.ClientId;
                     projekt.IsActive = model.IsActive;
 
                     // aktualizujemy przypisanych pracowników
@@ -275,8 +299,15 @@ namespace TimeTrackerApp.Controllers
                 .ThenBy(e => e.User.FirstName)
                 .ToList();
 
+            // ✅ FIXED: Dodanie klientów
+            var klienci = await _context.Clients
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+
             ViewBag.Employees = listaPracownikow;
             ViewBag.Managers = kierownicy;
+            ViewBag.Clients = klienci;
             
             // przeładuj projekt z bazy dla widoku
             var projektDoWidoku = await _context.Projects

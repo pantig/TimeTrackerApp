@@ -1,0 +1,73 @@
+@model TimeTrackerApp.Models.Client
+
+@{
+    ViewData["Title"] = "Usuń klienta";
+}
+
+<div style="margin-top: 2rem;">
+    <div style="margin-bottom: 2rem;">
+        <h2 style="margin: 0; color: var(--danger);">Usuń klienta</h2>
+        <p class="hint" style="margin-top: 0.5rem;">Czy na pewno chcesz usunąć tego klienta?</p>
+    </div>
+
+    <div class="card" style="max-width: 800px;">
+        <h3 style="margin-bottom: 1.5rem;">@Model.Name</h3>
+
+        @if (Model.Projects.Any())
+        {
+            <div class="alert alert-warning">
+                <strong>⚠️ Ostrzeżenie:</strong> Ten klient ma przypisane projekty (@Model.Projects.Count). Nie można usunąć klienta posiadającego projekty.
+            </div>
+        }
+
+        <dl style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; margin-bottom: 2rem;">
+            <dt style="font-weight: 600; color: var(--text-secondary);">Opis:</dt>
+            <dd style="margin: 0;">@(Model.Description ?? "(brak)")</dd>
+
+            <dt style="font-weight: 600; color: var(--text-secondary);">Email:</dt>
+            <dd style="margin: 0;">@(Model.Email ?? "(brak)")</dd>
+
+            <dt style="font-weight: 600; color: var(--text-secondary);">Telefon:</dt>
+            <dd style="margin: 0;">@(Model.Phone ?? "(brak)")</dd>
+
+            <dt style="font-weight: 600; color: var(--text-secondary);">Adres:</dt>
+            <dd style="margin: 0;">@(Model.Address ?? "(brak)")</dd>
+
+            <dt style="font-weight: 600; color: var(--text-secondary);">Miasto:</dt>
+            <dd style="margin: 0;">@(Model.City ?? "(brak)")</dd>
+
+            <dt style="font-weight: 600; color: var(--text-secondary);">NIP:</dt>
+            <dd style="margin: 0;">@(Model.NIP ?? "(brak)")</dd>
+
+            <dt style="font-weight: 600; color: var(--text-secondary);">Liczba projektów:</dt>
+            <dd style="margin: 0;"><span class="badge badge-secondary">@Model.Projects.Count</span></dd>
+
+            <dt style="font-weight: 600; color: var(--text-secondary);">Status:</dt>
+            <dd style="margin: 0;">
+                @if (Model.IsActive)
+                {
+                    <span class="badge badge-success">Aktywny</span>
+                }
+                else
+                {
+                    <span style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 1rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.5rem; background: rgba(163, 163, 163, 0.1); color: var(--text-tertiary);">Nieaktywny</span>
+                }
+            </dd>
+        </dl>
+
+        <form asp-action="Delete" method="post">
+            <input type="hidden" asp-for="Id" />
+            <div style="display: flex; gap: 0.5rem;">
+                @if (!Model.Projects.Any())
+                {
+                    <button type="submit" class="btn btn-danger">Usuń klienta</button>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-danger" disabled>Usuń klienta</button>
+                }
+                <a asp-action="Index" class="btn btn-secondary">Anuluj</a>
+            </div>
+        </form>
+    </div>
+</div>

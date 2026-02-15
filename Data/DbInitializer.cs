@@ -67,7 +67,55 @@ namespace TimeTrackerApp.Data
             context.Employees.AddRange(employees);
             context.SaveChanges();
 
-            // 3. PROJECTS - teraz możemy przypisać ManagerId
+            // ✅ 3. CLIENTS - tworzymy klientów (PRZED projektami!)
+            var clients = new List<Client>
+            {
+                new Client
+                {
+                    Name = "ABC Corporation",
+                    Description = "Duża firma produkcyjna",
+                    Email = "contact@abc-corp.com",
+                    Phone = "+48 123 456 789",
+                    Address = "ul. Główna 1",
+                    City = "Warszawa",
+                    PostalCode = "00-001",
+                    Country = "Polska",
+                    NIP = "1234567890",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Client
+                {
+                    Name = "TechStart Sp. z o.o.",
+                    Description = "Startup technologiczny",
+                    Email = "hello@techstart.pl",
+                    Phone = "+48 987 654 321",
+                    Address = "ul. Innowacyjna 42",
+                    City = "Kraków",
+                    PostalCode = "30-001",
+                    Country = "Polska",
+                    NIP = "0987654321",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Client
+                {
+                    Name = "Miasto Poznań",
+                    Description = "Urząd miasta",
+                    Email = "it@poznan.pl",
+                    Phone = "+48 61 878 4444",
+                    City = "Poznań",
+                    PostalCode = "61-001",
+                    Country = "Polska",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
+
+            context.Clients.AddRange(clients);
+            context.SaveChanges();
+
+            // 4. PROJECTS - teraz możemy przypisać ManagerId i ClientId
             var projects = new List<Project>
             {
                 new Project 
@@ -78,6 +126,7 @@ namespace TimeTrackerApp.Data
                     HoursBudget = 160,
                     StartDate = DateTime.Today.AddMonths(-2),
                     ManagerId = employees[1].Id,  // Jan Kierownik
+                    ClientId = clients[0].Id,      // ✅ ABC Corporation
                     IsActive = true
                 },
                 new Project 
@@ -88,6 +137,7 @@ namespace TimeTrackerApp.Data
                     HoursBudget = 240,
                     StartDate = DateTime.Today.AddMonths(-3),
                     ManagerId = employees[1].Id,  // Jan Kierownik
+                    ClientId = clients[1].Id,      // ✅ TechStart
                     IsActive = true
                 },
                 new Project 
@@ -98,6 +148,7 @@ namespace TimeTrackerApp.Data
                     HoursBudget = 80,
                     StartDate = DateTime.Today.AddMonths(-1),
                     ManagerId = employees[1].Id,  // Jan Kierownik
+                    ClientId = clients[2].Id,      // ✅ Miasto Poznań
                     IsActive = true
                 }
             };
@@ -105,13 +156,13 @@ namespace TimeTrackerApp.Data
             context.Projects.AddRange(projects);
             context.SaveChanges();
 
-            // 4. PRZYPISANIE PRACOWNIKÓW DO PROJEKTÓW
+            // 5. PRZYPISANIE PRACOWNIKÓW DO PROJEKTÓW
             // Piotr Pracownik pracuje w Portal E-commerce i System CRM
             employees[0].Projects.Add(projects[0]);
             employees[0].Projects.Add(projects[1]);
             context.SaveChanges();
 
-            // 5. TIME ENTRIES - wpisy czasu
+            // 6. TIME ENTRIES - wpisy czasu
             var now = DateTime.UtcNow;
             var timeEntries = new List<TimeEntry>
             {
@@ -141,6 +192,13 @@ namespace TimeTrackerApp.Data
 
             context.TimeEntries.AddRange(timeEntries);
             context.SaveChanges();
+            
+            Console.WriteLine("[INFO] Seed data created:");
+            Console.WriteLine($"  - {context.Users.Count()} users");
+            Console.WriteLine($"  - {context.Employees.Count()} employees");
+            Console.WriteLine($"  - {context.Clients.Count()} clients");
+            Console.WriteLine($"  - {context.Projects.Count()} projects");
+            Console.WriteLine($"  - {context.TimeEntries.Count()} time entries");
         }
     }
 }

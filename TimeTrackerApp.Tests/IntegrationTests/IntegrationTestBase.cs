@@ -121,7 +121,32 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
         db.Employees.AddRange(adminEmployee, managerEmployee, employeeEmployee);
         db.SaveChanges(); // ✅ Zapisz użytkowników i pracowników PRZED projektami
 
-        // Test projects - ✅ TERAZ z ManagerId!
+        // ✅ Test clients
+        var client1 = new Client
+        {
+            Id = 1,
+            Name = "ABC Corporation",
+            Description = "Test client ABC",
+            Email = "contact@abc.com",
+            Phone = "123456789",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var client2 = new Client
+        {
+            Id = 2,
+            Name = "XYZ Ltd",
+            Description = "Test client XYZ",
+            Email = "info@xyz.com",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        db.Clients.AddRange(client1, client2);
+        db.SaveChanges(); // ✅ Zapisz klientów PRZED projektami
+
+        // Test projects - ✅ TERAZ z ManagerId i ClientId!
         var project1 = new Project
         {
             Id = 1,
@@ -130,7 +155,8 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             IsActive = true,
             Status = ProjectStatus.Active,
             StartDate = DateTime.UtcNow.AddMonths(-3),
-            ManagerId = 2 // ✅ Manager (Id=2)
+            ManagerId = 2, // ✅ Manager (Id=2)
+            ClientId = 1  // ✅ Client ABC (Id=1)
         };
 
         var project2 = new Project
@@ -141,7 +167,8 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             IsActive = true,
             Status = ProjectStatus.Active,
             StartDate = DateTime.UtcNow.AddMonths(-2),
-            ManagerId = 2 // ✅ Manager (Id=2)
+            ManagerId = 2, // ✅ Manager (Id=2)
+            ClientId = 2  // ✅ Client XYZ (Id=2)
         };
 
         db.Projects.AddRange(project1, project2);
