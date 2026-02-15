@@ -161,8 +161,9 @@ public class NoProjectReportControllerTests : IDisposable
 
         var httpContext = new DefaultHttpContext { User = claimsPrincipal };
         
-        // Initialize TempData to avoid NullReferenceException
-        var tempData = new TempDataDictionary(httpContext, Mock.Of<ITempDataProvider>());
+        // Initialize TempData with a simple in-memory provider
+        var tempDataProvider = new SessionStateTempDataProvider();
+        var tempData = new TempDataDictionary(httpContext, tempDataProvider);
 
         _controller.ControllerContext = new ControllerContext
         {
@@ -213,7 +214,7 @@ public class NoProjectReportControllerTests : IDisposable
         
         // Check TempData contains error message
         _controller.TempData["ErrorMessage"].Should().NotBeNull();
-        _controller.TempData["ErrorMessage"].ToString().Should().Contain("profilu pracownika");
+        _controller.TempData["ErrorMessage"]!.ToString()!.Should().Contain("profilu pracownika");
     }
 
     [Fact]
