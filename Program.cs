@@ -57,9 +57,10 @@ app.MapGet("/", context =>
     return Task.CompletedTask;
 });
 
+// ✅ FIXED: Routing z domyślną akcją Index
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Account}/{action=Login}/{id?}");
+    pattern: "{controller=Account}/{action=Index}/{id?}");
 
 // ✅ FIXED: Apply migrations + Seed data
 using (var scope = app.Services.CreateScope())
