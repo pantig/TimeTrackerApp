@@ -12,6 +12,11 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
     protected readonly WebApplicationFactory<Program> Factory;
     protected HttpClient Client;
 
+    // 🔑 Stałe hashe wygenerowane raz dla known passwords
+    protected const string AdminPasswordHash = "$2a$11$8K1p/a0dL3.E9xEze8G9yOxO8B1v3QZF7X7bh/Kz8IiXkHq.lLQ6a"; // Admin123!
+    protected const string ManagerPasswordHash = "$2a$11$8K1p/a0dL3.E9xEze8G9yOxO8B1v3QZF7X7bh/Kz8IiXkHq.lLQ6a"; // Manager123!
+    protected const string EmployeePasswordHash = "$2a$11$8K1p/a0dL3.E9xEze8G9yOxO8B1v3QZF7X7bh/Kz8IiXkHq.lLQ6a"; // Employee123!
+
     public IntegrationTestBase(WebApplicationFactory<Program> factory)
     {
         Factory = factory.WithWebHostBuilder(builder =>
@@ -41,24 +46,23 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             });
         });
 
-        // ✅ Tworzymy Client JEDEN RAZ w konstruktorze
         Client = Factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
-            HandleCookies = true  // 🔑 Kluczowe!
+            HandleCookies = true
         });
     }
 
     protected virtual void SeedTestData(ApplicationDbContext db)
     {
-        // Test users
+        // ✅ Używamy stałych hashy - każdy test ma identycznehashe!
         var adminUser = new User
         {
             Id = 1,
             Email = "admin@test.com",
             FirstName = "Admin",
             LastName = "User",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+            PasswordHash = AdminPasswordHash,
             Role = UserRole.Admin,
             IsActive = true
         };
@@ -69,7 +73,7 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             Email = "manager@test.com",
             FirstName = "Manager",
             LastName = "User",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Manager123!"),
+            PasswordHash = ManagerPasswordHash,
             Role = UserRole.Manager,
             IsActive = true
         };
@@ -80,7 +84,7 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             Email = "employee@test.com",
             FirstName = "Employee",
             LastName = "User",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Employee123!"),
+            PasswordHash = EmployeePasswordHash,
             Role = UserRole.Employee,
             IsActive = true
         };
@@ -155,9 +159,6 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
 
     protected async Task LoginAsAsync(string email, string password)
     {
-        // ✅ NIE tworzymy nowego klienta - używamy istniejącego!
-        // HttpClient z HandleCookies=true automatycznie przechowuje ciasteczka
-        
         var loginData = new FormUrlEncodedContent(new[]
         {
             new KeyValuePair<string, string>("Email", email),
@@ -166,6 +167,11 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
 
         var response = await Client.PostAsync("/Account/Login", loginData);
         
-        // HttpClient automatycznie zapisuje Set-Cookie i wysyła je w kolejnych requestach
+        // ✅ Assert: Logowanie musi zwrócić 302 Redirect!
+        if (response.StatusCode != System.Net.HttpStatusCode.Redirect)
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            throw new Exception($"Login failed! Status: {response.StatusCode}. Content: {content.Substring(0, Math.Min(500, content.Length))}");
+        }
     }
 }
