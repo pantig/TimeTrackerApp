@@ -33,7 +33,7 @@
             @foreach (var entry in Model)
             {
                 var hasNoProject = entry.ProjectId == null;
-                <tr style="@(hasNoProject ? "border-left: 3px solid var(--warning-color);" : "")">
+                <tr class="@(hasNoProject ? "no-project-entry-row" : "")">
                     <td>@entry.EntryDate.ToString("yyyy-MM-dd")</td>
                     <td><strong>@entry.Employee.User.LastName @entry.Employee.User.FirstName</strong></td>
                     <td>
