@@ -79,8 +79,9 @@ namespace TimeTrackerApp.Controllers
                 }
             }
 
-            // Usuń błędy dla właściwości nawigacyjnych (EF wypełni je automatycznie)
+            // ✅ FIXED: Usuń błędy dla właściwości nawigacyjnych (EF wypełni je automatycznie)
             ModelState.Remove("Manager");
+            ModelState.Remove("Client");
             ModelState.Remove("TimeEntries");
             ModelState.Remove("Employees");
 
@@ -197,8 +198,9 @@ namespace TimeTrackerApp.Controllers
                 }
             }
 
-            // Usuń błędy dla właściwości nawigacyjnych (EF wypełni je automatycznie)
+            // ✅ FIXED: Usuń błędy dla właściwości nawigacyjnych (EF wypełni je automatycznie)
             ModelState.Remove("Manager");
+            ModelState.Remove("Client");
             ModelState.Remove("TimeEntries");
             ModelState.Remove("Employees");
 
@@ -222,7 +224,7 @@ namespace TimeTrackerApp.Controllers
                     if (projekt == null)
                         return NotFound();
 
-                    // aktualizujemy WSZYSTKIE dane projektu
+                    // ✅ FIXED: aktualizujemy WSZYSTKIE dane projektu
                     projekt.Name = model.Name;
                     projekt.Description = model.Description;
                     projekt.Status = model.Status;
@@ -230,6 +232,7 @@ namespace TimeTrackerApp.Controllers
                     projekt.EndDate = model.EndDate;
                     projekt.HoursBudget = model.HoursBudget;
                     projekt.ManagerId = model.ManagerId;
+                    projekt.ClientId = model.ClientId; // ✅ FIXED: Dodano aktualizację ClientId
                     projekt.IsActive = model.IsActive;
 
                     // aktualizujemy przypisanych pracowników
