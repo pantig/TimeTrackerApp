@@ -202,7 +202,7 @@ namespace TimeTrackerApp.Controllers
 
                 if (celPracownik != null)
                 {
-                    // pracownik może rejestrować czas tylko w przypisanych projektach
+                    // pracownik może rejestrowaC czas tylko w przypisanych projektach
                     var czyPrzypisany = celPracownik.Projects.Any(p => p.Id == request.ProjectId.Value);
                     if (!czyPrzypisany)
                     {
@@ -269,7 +269,15 @@ namespace TimeTrackerApp.Controllers
                 }
             }
 
-            // aktualizujemy dane
+            // aktualizujemy dane (włącznie z czasem!)
+            if (request.StartTime.HasValue)
+            {
+                wpis.StartTime = request.StartTime.Value;
+            }
+            if (request.EndTime.HasValue)
+            {
+                wpis.EndTime = request.EndTime.Value;
+            }
             wpis.ProjectId = request.ProjectId;
             wpis.Description = request.Description;
 
@@ -408,6 +416,8 @@ namespace TimeTrackerApp.Controllers
     public class UpdateEntryRequest
     {
         public int Id { get; set; }
+        public TimeSpan? StartTime { get; set; }
+        public TimeSpan? EndTime { get; set; }
         public int? ProjectId { get; set; }
         public string? Description { get; set; }
     }
