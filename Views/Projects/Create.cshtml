@@ -13,8 +13,8 @@
         <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 
         <div class="form-group">
-            <label asp-for="Name">Nazwa projektu</label>
-            <input asp-for="Name" class="form-control" placeholder="Nazwa projektu" />
+            <label asp-for="Name">Nazwa projektu *</label>
+            <input asp-for="Name" class="form-control" placeholder="Nazwa projektu" required />
             <span asp-validation-for="Name" class="text-danger"></span>
         </div>
 
@@ -25,8 +25,8 @@
         </div>
 
         <div class="form-group">
-            <label asp-for="ManagerId">Opiekun projektu (Kierownik)</label>
-            <select asp-for="ManagerId" class="form-control">
+            <label asp-for="ManagerId">Opiekun projektu (Kierownik) *</label>
+            <select asp-for="ManagerId" class="form-control" required>
                 <option value="">-- Wybierz kierownika --</option>
                 @if (managers != null && managers.Any())
                 {
@@ -41,7 +41,7 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
             <div class="form-group">
-                <label asp-for="Status">Status</label>
+                <label asp-for="Status">Status *</label>
                 <select asp-for="Status" class="form-control">
                     <option value="0">Planowanie</option>
                     <option value="1" selected>Aktywny</option>
@@ -60,8 +60,8 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
             <div class="form-group">
-                <label asp-for="StartDate">Data rozpoczęcia</label>
-                <input asp-for="StartDate" type="date" class="form-control" />
+                <label asp-for="StartDate">Data rozpoczęcia *</label>
+                <input asp-for="StartDate" type="date" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" required />
                 <span asp-validation-for="StartDate" class="text-danger"></span>
             </div>
 
