@@ -17,7 +17,7 @@ public class ProjectTests : IntegrationTestBase
     public async Task GetProjectsList_AsAuthenticated_ReturnsProjects()
     {
         // Arrange
-        var cookie = await LoginAsAsync("admin", "Admin123!");
+        var cookie = await LoginAsAsync("admin@test.com", "Admin123!");
         SetAuthCookie(cookie);
 
         // Act
@@ -34,7 +34,7 @@ public class ProjectTests : IntegrationTestBase
     public async Task CreateProject_WithValidData_CreatesProject()
     {
         // Arrange
-        var cookie = await LoginAsAsync("admin", "Admin123!");
+        var cookie = await LoginAsAsync("admin@test.com", "Admin123!");
         SetAuthCookie(cookie);
 
         var projectData = new FormUrlEncodedContent(new[]
@@ -56,7 +56,7 @@ public class ProjectTests : IntegrationTestBase
     public async Task UpdateProject_WithValidData_UpdatesProject()
     {
         // Arrange
-        var cookie = await LoginAsAsync("admin", "Admin123!");
+        var cookie = await LoginAsAsync("admin@test.com", "Admin123!");
         SetAuthCookie(cookie);
 
         var updateData = new FormUrlEncodedContent(new[]
@@ -78,7 +78,7 @@ public class ProjectTests : IntegrationTestBase
     public async Task DeleteProject_ExistingProject_DeletesSuccessfully()
     {
         // Arrange
-        var cookie = await LoginAsAsync("admin", "Admin123!");
+        var cookie = await LoginAsAsync("admin@test.com", "Admin123!");
         SetAuthCookie(cookie);
 
         // Act

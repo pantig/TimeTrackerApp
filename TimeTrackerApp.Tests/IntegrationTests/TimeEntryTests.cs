@@ -17,7 +17,7 @@ public class TimeEntryTests : IntegrationTestBase
     public async Task GetTimeEntriesList_AsEmployee_ReturnsOwnEntries()
     {
         // Arrange
-        var cookie = await LoginAsAsync("employee", "Employee123!");
+        var cookie = await LoginAsAsync("employee@test.com", "Employee123!");
         SetAuthCookie(cookie);
 
         // Act
@@ -33,7 +33,7 @@ public class TimeEntryTests : IntegrationTestBase
     public async Task AddTimeEntry_WithValidData_CreatesEntry()
     {
         // Arrange
-        var cookie = await LoginAsAsync("employee", "Employee123!");
+        var cookie = await LoginAsAsync("employee@test.com", "Employee123!");
         SetAuthCookie(cookie);
 
         var entryData = new
@@ -61,7 +61,7 @@ public class TimeEntryTests : IntegrationTestBase
     public async Task UpdateTimeEntry_WithValidData_UpdatesEntry()
     {
         // Arrange
-        var cookie = await LoginAsAsync("employee", "Employee123!");
+        var cookie = await LoginAsAsync("employee@test.com", "Employee123!");
         SetAuthCookie(cookie);
 
         var updateData = new
@@ -88,7 +88,7 @@ public class TimeEntryTests : IntegrationTestBase
     public async Task DeleteTimeEntry_OwnEntry_DeletesSuccessfully()
     {
         // Arrange
-        var cookie = await LoginAsAsync("employee", "Employee123!");
+        var cookie = await LoginAsAsync("employee@test.com", "Employee123!");
         SetAuthCookie(cookie);
 
         var deleteData = new { id = 1 };
@@ -107,7 +107,7 @@ public class TimeEntryTests : IntegrationTestBase
     public async Task AddTimeEntry_InvalidTimeRange_ReturnsError()
     {
         // Arrange
-        var cookie = await LoginAsAsync("employee", "Employee123!");
+        var cookie = await LoginAsAsync("employee@test.com", "Employee123!");
         SetAuthCookie(cookie);
 
         var entryData = new
@@ -134,7 +134,7 @@ public class TimeEntryTests : IntegrationTestBase
     public async Task ApproveTimeEntry_AsManager_ApprovesSuccessfully()
     {
         // Arrange
-        var cookie = await LoginAsAsync("manager", "Manager123!");
+        var cookie = await LoginAsAsync("manager@test.com", "Manager123!");
         SetAuthCookie(cookie);
 
         var approveData = new FormUrlEncodedContent(new[]
@@ -153,7 +153,7 @@ public class TimeEntryTests : IntegrationTestBase
     public async Task RejectTimeEntry_AsManager_RejectsSuccessfully()
     {
         // Arrange
-        var cookie = await LoginAsAsync("manager", "Manager123!");
+        var cookie = await LoginAsAsync("manager@test.com", "Manager123!");
         SetAuthCookie(cookie);
 
         var rejectData = new FormUrlEncodedContent(new[]
