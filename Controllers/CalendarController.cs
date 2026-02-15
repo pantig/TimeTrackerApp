@@ -192,13 +192,15 @@ namespace TimeTrackerApp.Controllers
             }
 
             // sprawdzamy czy pracownik jest przypisany do projektu (jeśli projekt został wybrany)
-            if (request.ProjectId.HasValue)
+            // ZAWSZE sprawdzamy dla pracowników (Employee), admin/manager mogą dodawać bez ograniczeń
+            if (request.ProjectId.HasValue && aktualnyUzytkownik.Role == UserRole.Employee)
             {
+                // pobieramy pracownika dla którego dodajemy wpis
                 var celPracownik = await _context.Employees
                     .Include(e => e.Projects)
                     .FirstOrDefaultAsync(e => e.Id == request.EmployeeId);
 
-                if (celPracownik != null && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
+                if (celPracownik != null)
                 {
                     // pracownik może rejestrować czas tylko w przypisanych projektach
                     var czyPrzypisany = celPracownik.Projects.Any(p => p.Id == request.ProjectId.Value);
@@ -249,13 +251,15 @@ namespace TimeTrackerApp.Controllers
             }
 
             // sprawdzamy czy pracownik jest przypisany do nowego projektu
-            if (request.ProjectId.HasValue)
+            // ZAWSZE sprawdzamy dla pracowników (Employee), admin/manager mogą edytować bez ograniczeń
+            if (request.ProjectId.HasValue && aktualnyUzytkownik.Role == UserRole.Employee)
             {
+                // pobieramy pracownika którego wpis edytujemy
                 var celPracownik = await _context.Employees
                     .Include(e => e.Projects)
                     .FirstOrDefaultAsync(e => e.Id == wpis.EmployeeId);
 
-                if (celPracownik != null && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
+                if (celPracownik != null)
                 {
                     var czyPrzypisany = celPracownik.Projects.Any(p => p.Id == request.ProjectId.Value);
                     if (!czyPrzypisany)
