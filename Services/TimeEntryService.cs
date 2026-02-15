@@ -13,6 +13,103 @@ namespace TimeTrackerApp.Services
             _context = context;
         }
 
+        public async Task<List<TimeEntry>> GetTimeEntriesForEmployeeAsync(int employeeId, DateTime from, DateTime to)
+        {
+            return await _context.TimeEntries
+                .Include(e => e.Project)
+                .Include(e => e.Employee)
+                    .ThenInclude(e => e.User)
+                .Where(e => e.EmployeeId == employeeId && e.EntryDate >= from && e.EntryDate <= to)
+                .OrderBy(e => e.EntryDate)
+                .ThenBy(e => e.StartTime)
+                .ToListAsync();
+        }
+
+        public async Task<List<TimeEntry>> GetTimeEntriesForProjectAsync(int projectId)
+        {
+            return await _context.TimeEntries
+                .Include(e => e.Employee)
+                    .ThenInclude(e => e.User)
+                .Include(e => e.Project)
+                .Where(e => e.ProjectId == projectId)
+                .OrderBy(e => e.EntryDate)
+                .ThenBy(e => e.StartTime)
+                .ToListAsync();
+        }
+
+        public async Task<decimal> GetTotalHoursAsync(int employeeId, DateTime from, DateTime to)
+        {
+            var entries = await GetTimeEntriesForEmployeeAsync(employeeId, from, to);
+            return entries.Sum(e => e.TotalHours);
+        }
+
+        public async Task<decimal> GetTotalEarningsAsync(int employeeId, DateTime from, DateTime to)
+        {
+            var employee = await _context.Employees.FindAsync(employeeId);
+            if (employee == null || !employee.HourlyRate.HasValue)
+                return 0;
+
+            var totalHours = await GetTotalHoursAsync(employeeId, from, to);
+            return totalHours * employee.HourlyRate.Value;
+        }
+
+        public async Task<List<TimeEntry>> GetUnapprovedEntriesAsync()
+        {
+            return await _context.TimeEntries
+                .Include(e => e.Employee)
+                    .ThenInclude(e => e.User)
+                .Include(e => e.Project)
+                .Where(e => e.ApprovedBy == null)
+                .OrderBy(e => e.EntryDate)
+                .ThenBy(e => e.StartTime)
+                .ToListAsync();
+        }
+
+        public async Task ApproveTimeEntryAsync(int entryId)
+        {
+            var entry = await _context.TimeEntries.FindAsync(entryId);
+            if (entry != null)
+            {
+                entry.ApprovedBy = 1; // TODO: Use actual approver user ID
+                entry.ApprovedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task UpsertDailyHoursAsync(int employeeId, DateTime date, decimal hours, int? projectId, string? description)
+        {
+            // Find existing entry for this day
+            var existingEntry = await _context.TimeEntries
+                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId && e.EntryDate.Date == date.Date);
+
+            if (existingEntry != null)
+            {
+                // Update existing
+                existingEntry.StartTime = TimeSpan.Zero;
+                existingEntry.EndTime = TimeSpan.FromHours((double)hours);
+                existingEntry.ProjectId = projectId;
+                existingEntry.Description = description;
+            }
+            else
+            {
+                // Create new
+                var newEntry = new TimeEntry
+                {
+                    EmployeeId = employeeId,
+                    EntryDate = date.Date,
+                    StartTime = TimeSpan.Zero,
+                    EndTime = TimeSpan.FromHours((double)hours),
+                    ProjectId = projectId,
+                    Description = description ?? string.Empty,
+                    CreatedBy = 1 // TODO: Use actual user ID
+                };
+                _context.TimeEntries.Add(newEntry);
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        // Additional helper methods
         public async Task<bool> HasOverlapAsync(int employeeId, DateTime date, TimeSpan startTime, TimeSpan endTime, int? excludeEntryId = null)
         {
             var existingEntries = await _context.TimeEntries
