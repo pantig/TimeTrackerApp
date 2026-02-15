@@ -375,8 +375,8 @@ namespace TimeTrackerApp.Controllers
                     Employee = g.First().Employee,
                     TotalHours = g.Sum(te => te.TotalHours),
                     EntriesCount = g.Count(),
-                    FirstEntry = g.Min(te => te.Date),
-                    LastEntry = g.Max(te => te.Date)
+                    FirstEntry = g.Min(te => te.EntryDate),
+                    LastEntry = g.Max(te => te.EntryDate)
                 });
 
             foreach (var emp in employeesWithEntries)
@@ -408,8 +408,8 @@ namespace TimeTrackerApp.Controllers
             var daysActive = 0;
             if (project.TimeEntries.Any())
             {
-                var firstEntry = project.TimeEntries.Min(te => te.Date);
-                var lastEntry = project.TimeEntries.Max(te => te.Date);
+                var firstEntry = project.TimeEntries.Min(te => te.EntryDate);
+                var lastEntry = project.TimeEntries.Max(te => te.EntryDate);
                 daysActive = (lastEntry - firstEntry).Days + 1;
             }
 
