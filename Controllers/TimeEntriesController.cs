@@ -114,6 +114,35 @@ namespace TimeTrackerApp.Controllers
                 return View(model);
             }
 
+            // sprawdzamy uprawnienia - pracownik może dodawać tylko dla siebie
+            if (user.Role == UserRole.Employee)
+            {
+                var employee = await _context.Employees
+                    .Include(e => e.Projects)
+                    .FirstOrDefaultAsync(e => e.UserId == userId);
+                    
+                if (employee == null || model.EmployeeId != employee.Id)
+                {
+                    ModelState.AddModelError("", "Nie masz uprawnień do dodawania wpisów dla innych pracowników.");
+                    model.Employees = new List<Employee> { employee };
+                    model.Projects = employee?.Projects.Where(p => p.IsActive).ToList() ?? new List<Project>();
+                    return View(model);
+                }
+
+                // sprawdzamy czy pracownik jest przypisany do projektu
+                if (model.ProjectId.HasValue)
+                {
+                    var czyPrzypisany = employee.Projects.Any(p => p.Id == model.ProjectId.Value);
+                    if (!czyPrzypisany)
+                    {
+                        ModelState.AddModelError("ProjectId", "Nie jesteś przypisany do tego projektu.");
+                        model.Employees = new List<Employee> { employee };
+                        model.Projects = employee.Projects.Where(p => p.IsActive).ToList();
+                        return View(model);
+                    }
+                }
+            }
+
             var timeEntry = new TimeEntry
             {
                 EmployeeId = model.EmployeeId,
@@ -125,23 +154,6 @@ namespace TimeTrackerApp.Controllers
                 CreatedBy = userId,
                 CreatedAt = DateTime.UtcNow
             };
-
-            // sprawdzamy uprawnienia - pracownik może dodawać tylko dla siebie
-            if (user.Role == UserRole.Employee)
-            {
-                var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
-                if (employee == null || timeEntry.EmployeeId != employee.Id)
-                {
-                    ModelState.AddModelError("", "Nie masz uprawnień do dodawania wpisów dla innych pracowników.");
-                    model.Employees = new List<Employee> { employee };
-                    
-                    var pracownik = await _context.Employees
-                        .Include(e => e.Projects)
-                        .FirstOrDefaultAsync(e => e.UserId == userId);
-                    model.Projects = pracownik?.Projects.Where(p => p.IsActive).ToList() ?? new List<Project>();
-                    return View(model);
-                }
-            }
 
             _context.TimeEntries.Add(timeEntry);
             await _context.SaveChangesAsync();
@@ -244,9 +256,25 @@ namespace TimeTrackerApp.Controllers
             // sprawdzamy uprawnienia
             if (user.Role == UserRole.Employee)
             {
-                var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId);
+                var employee = await _context.Employees
+                    .Include(e => e.Projects)
+                    .FirstOrDefaultAsync(e => e.UserId == userId);
+                    
                 if (employee == null || timeEntry.EmployeeId != employee.Id || model.EmployeeId != employee.Id)
                     return Forbid();
+
+                // sprawdzamy czy pracownik jest przypisany do nowego projektu
+                if (model.ProjectId.HasValue)
+                {
+                    var czyPrzypisany = employee.Projects.Any(p => p.Id == model.ProjectId.Value);
+                    if (!czyPrzypisany)
+                    {
+                        ModelState.AddModelError("ProjectId", "Nie jesteś przypisany do tego projektu.");
+                        model.Employees = new List<Employee> { employee };
+                        model.Projects = employee.Projects.Where(p => p.IsActive).ToList();
+                        return View(model);
+                    }
+                }
             }
 
             timeEntry.EmployeeId = model.EmployeeId;
