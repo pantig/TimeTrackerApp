@@ -53,7 +53,6 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
         var adminUser = new User
         {
             Id = 1,
-            Login = "admin",
             Email = "admin@test.com",
             FirstName = "Admin",
             LastName = "User",
@@ -65,7 +64,6 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
         var managerUser = new User
         {
             Id = 2,
-            Login = "manager",
             Email = "manager@test.com",
             FirstName = "Manager",
             LastName = "User",
@@ -77,7 +75,6 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
         var employeeUser = new User
         {
             Id = 3,
-            Login = "employee",
             Email = "employee@test.com",
             FirstName = "Employee",
             LastName = "User",
@@ -144,18 +141,18 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             StartTime = new TimeSpan(9, 0, 0),
             EndTime = new TimeSpan(17, 0, 0),
             Description = "Development work",
-            ApprovalStatus = ApprovalStatus.Pending
+            CreatedBy = 3
         };
 
         db.TimeEntries.Add(entry1);
         db.SaveChanges();
     }
 
-    protected async Task<string> LoginAsAsync(string username, string password)
+    protected async Task<string> LoginAsAsync(string email, string password)
     {
         var loginData = new FormUrlEncodedContent(new[]
         {
-            new KeyValuePair<string, string>("Login", username),
+            new KeyValuePair<string, string>("Email", email),
             new KeyValuePair<string, string>("Password", password)
         });
 
