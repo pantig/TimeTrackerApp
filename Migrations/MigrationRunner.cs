@@ -9,11 +9,33 @@ namespace TimeTrackerApp.Migrations
     {
         public static void RunMigrations(string connectionString)
         {
-            var migrationsDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Migrations");
-            
-            if (!Directory.Exists(migrationsDirectory))
+            // Spróbuj różnych lokalizacji katalogu Migrations
+            var possiblePaths = new[]
             {
-                Console.WriteLine($"Migrations directory not found: {migrationsDirectory}");
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Migrations"),
+                Path.Combine(Directory.GetCurrentDirectory(), "Migrations"),
+                Path.Combine(AppContext.BaseDirectory, "Migrations")
+            };
+
+            string? migrationsDirectory = null;
+            foreach (var path in possiblePaths)
+            {
+                Console.WriteLine($"[DEBUG] Checking path: {path}");
+                if (Directory.Exists(path))
+                {
+                    migrationsDirectory = path;
+                    Console.WriteLine($"[INFO] Found migrations directory: {path}");
+                    break;
+                }
+            }
+            
+            if (migrationsDirectory == null)
+            {
+                Console.WriteLine("[WARNING] Migrations directory not found. Tried:");
+                foreach (var path in possiblePaths)
+                {
+                    Console.WriteLine($"  - {path}");
+                }
                 return;
             }
 
@@ -23,11 +45,15 @@ namespace TimeTrackerApp.Migrations
 
             if (!sqlFiles.Any())
             {
-                Console.WriteLine("No migration files found.");
+                Console.WriteLine("[INFO] No migration files found.");
                 return;
             }
 
-            Console.WriteLine($"Found {sqlFiles.Count} migration file(s).");
+            Console.WriteLine($"[INFO] Found {sqlFiles.Count} migration file(s):");
+            foreach (var file in sqlFiles)
+            {
+                Console.WriteLine($"  - {Path.GetFileName(file)}");
+            }
 
             using var connection = new SqliteConnection(connectionString);
             connection.Open();
@@ -42,6 +68,7 @@ namespace TimeTrackerApp.Migrations
                     );
                 ";
                 cmd.ExecuteNonQuery();
+                Console.WriteLine("[INFO] Migration history table ready.");
             }
 
             foreach (var sqlFile in sqlFiles)
@@ -57,33 +84,49 @@ namespace TimeTrackerApp.Migrations
 
                     if (count > 0)
                     {
-                        Console.WriteLine($"Migration {migrationId} already applied. Skipping.");
+                        Console.WriteLine($"[SKIP] Migration '{migrationId}' already applied.");
                         continue;
                     }
                 }
 
-                Console.WriteLine($"Applying migration: {migrationId}");
+                Console.WriteLine($"[RUN] Applying migration: {migrationId}");
 
                 try
                 {
                     var sql = File.ReadAllText(sqlFile);
+                    Console.WriteLine($"[DEBUG] Read {sql.Length} characters from {Path.GetFileName(sqlFile)}");
                     
                     // Podziel na pojedyncze polecenia (rozdzielone przez puste linie)
                     var commands = sql.Split(new[] { "\n\n", "\r\n\r\n" }, StringSplitOptions.RemoveEmptyEntries)
                         .Where(cmd => !string.IsNullOrWhiteSpace(cmd) && !cmd.Trim().StartsWith("--"))
                         .ToList();
 
+                    Console.WriteLine($"[DEBUG] Parsed {commands.Count} SQL command(s)");
+
                     using var transaction = connection.BeginTransaction();
                     
+                    int executedCount = 0;
                     foreach (var commandText in commands)
                     {
                         if (string.IsNullOrWhiteSpace(commandText)) continue;
                         
-                        using var cmd = connection.CreateCommand();
-                        cmd.Transaction = transaction;
-                        cmd.CommandText = commandText.Trim();
-                        cmd.ExecuteNonQuery();
+                        try
+                        {
+                            using var cmd = connection.CreateCommand();
+                            cmd.Transaction = transaction;
+                            cmd.CommandText = commandText.Trim();
+                            cmd.ExecuteNonQuery();
+                            executedCount++;
+                        }
+                        catch (SqliteException ex) when (ex.Message.Contains("already exists"))
+                        {
+                            // Ignoruj błędy "already exists"
+                            Console.WriteLine($"[WARNING] {ex.Message} - continuing...");
+                            executedCount++;
+                        }
                     }
+
+                    Console.WriteLine($"[DEBUG] Executed {executedCount}/{commands.Count} commands");
 
                     // Zapisz informację o zastosowanej migracji
                     using (var recordCmd = connection.CreateCommand())
@@ -96,16 +139,21 @@ namespace TimeTrackerApp.Migrations
                     }
 
                     transaction.Commit();
-                    Console.WriteLine($"Migration {migrationId} applied successfully.");
+                    Console.WriteLine($"[✓] Migration '{migrationId}' applied successfully.");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error applying migration {migrationId}: {ex.Message}");
+                    Console.WriteLine($"[ERROR] Error applying migration '{migrationId}':");
+                    Console.WriteLine($"[ERROR] {ex.Message}");
+                    if (ex.InnerException != null)
+                    {
+                        Console.WriteLine($"[ERROR] Inner: {ex.InnerException.Message}");
+                    }
                     throw;
                 }
             }
 
-            Console.WriteLine("All migrations completed.");
+            Console.WriteLine("[SUCCESS] All migrations completed.");
         }
     }
 }
