@@ -10,7 +10,7 @@ namespace TimeTrackerApp.Tests.IntegrationTests;
 public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
 {
     protected readonly WebApplicationFactory<Program> Factory;
-    protected readonly HttpClient Client;
+    protected HttpClient Client;
 
     public IntegrationTestBase(WebApplicationFactory<Program> factory)
     {
@@ -41,9 +41,15 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             });
         });
 
-        Client = Factory.CreateClient(new WebApplicationFactoryClientOptions
+        Client = CreateClient();
+    }
+
+    protected HttpClient CreateClient()
+    {
+        return Factory.CreateClient(new WebApplicationFactoryClientOptions
         {
-            AllowAutoRedirect = false
+            AllowAutoRedirect = false,
+            HandleCookies = true  // ✅ Kluczowe!
         });
     }
 
@@ -151,8 +157,11 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
         db.SaveChanges();
     }
 
-    protected async Task<string> LoginAsAsync(string email, string password)
+    protected async Task LoginAsAsync(string email, string password)
     {
+        // Create a new client with cookie handling
+        Client = CreateClient();
+
         var loginData = new FormUrlEncodedContent(new[]
         {
             new KeyValuePair<string, string>("Email", email),
@@ -161,21 +170,7 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
 
         var response = await Client.PostAsync("/Account/Login", loginData);
         
-        // Extract cookies
-        if (response.Headers.TryGetValues("Set-Cookie", out var cookies))
-        {
-            var authCookie = cookies.FirstOrDefault(c => c.StartsWith(".AspNetCore.Cookies"));
-            return authCookie?.Split(';')[0] ?? string.Empty;
-        }
-
-        return string.Empty;
-    }
-
-    protected void SetAuthCookie(string cookie)
-    {
-        if (!string.IsNullOrEmpty(cookie))
-        {
-            Client.DefaultRequestHeaders.Add("Cookie", cookie);
-        }
+        // HttpClient with HandleCookies=true automatically stores and sends cookies
+        // No need to manually extract and set them
     }
 }
