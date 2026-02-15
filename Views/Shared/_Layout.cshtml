@@ -18,10 +18,19 @@
                 <a asp-controller="TimeEntries" asp-action="Index">Wpisy</a>
                 <a asp-controller="Reports" asp-action="Summary">Raporty</a>
                 <a asp-controller="Reports" asp-action="Monthly">Raport miesięczny</a>
+                
+                @* Link dla pracowników - Moje wpisy bez projektu *@
+                @if (User.IsInRole("Employee"))
+                {
+                    <a asp-controller="NoProjectReport" asp-action="MyEntries" style="color: #eab308;">⚠️ Brak projektu</a>
+                }
+                
                 @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
                 {
                     <a asp-controller="Projects" asp-action="Index">Projekty</a>
                     <a asp-controller="Employees" asp-action="Index">Pracownicy</a>
+                    @* Link dla managerów - Wszystkie wpisy bez projektu *@
+                    <a asp-controller="NoProjectReport" asp-action="AllEntries" style="color: #eab308;">⚠️ Wszystkie bez projektu</a>
                 }
                 <span class="username">👤 @User.Identity.Name</span>
                 <form method="post" asp-controller="Account" asp-action="Logout" style="display:inline;">
@@ -38,6 +47,14 @@
 </nav>
 
 <div class="container">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    }
     @RenderBody()
 </div>
 
