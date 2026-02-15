@@ -12,96 +12,88 @@ namespace TimeTrackerApp.Data
 
         public DbSet<User> Users { get; set; }
         public DbSet<Employee> Employees { get; set; }
-        public DbSet<TimeEntry> TimeEntries { get; set; }
+        public DbSet<Client> Clients { get; set; }
         public DbSet<Project> Projects { get; set; }
+        public DbSet<TimeEntry> TimeEntries { get; set; }
         public DbSet<DayMarker> DayMarkers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // User - Employee (1:1)
+            // User - Employee relationship (1:1)
             modelBuilder.Entity<Employee>()
                 .HasOne(e => e.User)
-                .WithMany(u => u.Employees)
-                .HasForeignKey(e => e.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .WithOne()
+                .HasForeignKey<Employee>(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<Employee>()
-                .HasIndex(e => e.UserId)
-                .IsUnique();
-
-            // Employee - TimeEntry (1:many)
-            modelBuilder.Entity<TimeEntry>()
-                .HasOne(t => t.Employee)
-                .WithMany(e => e.TimeEntries)
-                .HasForeignKey(t => t.EmployeeId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            // Project - TimeEntry (1:many)
-            modelBuilder.Entity<TimeEntry>()
-                .HasOne(t => t.Project)
-                .WithMany(p => p.TimeEntries)
-                .HasForeignKey(t => t.ProjectId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            // Employee - Project (many:many)
-            modelBuilder.Entity<Employee>()
-                .HasMany(e => e.Projects)
-                .WithMany(p => p.Employees)
-                .UsingEntity("EmployeeProject");
-
-            // Project - Manager (Employee) - relacja 1:many
-            // Każdy projekt ma jednego opiekuna (Manager)
-            // Każdy Employee może być opiekunem wielu projektów
+            // Project - Manager relationship
             modelBuilder.Entity<Project>()
                 .HasOne(p => p.Manager)
-                .WithMany()  // Employee nie ma kolekcji ManagedProjects
+                .WithMany()
                 .HasForeignKey(p => p.ManagerId)
-                .OnDelete(DeleteBehavior.Restrict);  // nie usuwamy projektów gdy usuwamy managera
-
-            // User - TimeEntry (created by)
-            modelBuilder.Entity<TimeEntry>()
-                .HasOne(t => t.CreatedByUser)
-                .WithMany(u => u.TimeEntries)
-                .HasForeignKey(t => t.CreatedBy)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Employee - DayMarker (1:many)
-            modelBuilder.Entity<DayMarker>()
-                .HasOne(d => d.Employee)
+            // Client - Projects relationship (1:Many)
+            modelBuilder.Entity<Project>()
+                .HasOne(p => p.Client)
+                .WithMany(c => c.Projects)
+                .HasForeignKey(p => p.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Project - Employees relationship (Many:Many)
+            modelBuilder.Entity<Project>()
+                .HasMany(p => p.Employees)
+                .WithMany(e => e.Projects);
+
+            // TimeEntry - Employee relationship
+            modelBuilder.Entity<TimeEntry>()
+                .HasOne(te => te.Employee)
                 .WithMany()
-                .HasForeignKey(d => d.EmployeeId)
+                .HasForeignKey(te => te.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // TimeEntry - Project relationship (optional)
+            modelBuilder.Entity<TimeEntry>()
+                .HasOne(te => te.Project)
+                .WithMany(p => p.TimeEntries)
+                .HasForeignKey(te => te.ProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // TimeEntry - CreatedByUser relationship
+            modelBuilder.Entity<TimeEntry>()
+                .HasOne(te => te.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(te => te.CreatedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // DayMarker - Employee relationship
+            modelBuilder.Entity<DayMarker>()
+                .HasOne(dm => dm.Employee)
+                .WithMany()
+                .HasForeignKey(dm => dm.EmployeeId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // User - DayMarker (created by)
-            modelBuilder.Entity<DayMarker>()
-                .HasOne(d => d.CreatedByUser)
-                .WithMany()
-                .HasForeignKey(d => d.CreatedBy)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            // Indeksy
+            // Indexes
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
 
-            modelBuilder.Entity<DayMarker>()
-                .HasIndex(d => new { d.EmployeeId, d.Date })
-                .IsUnique();
-
-            // Wartości domyślne
-            modelBuilder.Entity<User>()
-                .Property(u => u.CreatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+            modelBuilder.Entity<TimeEntry>()
+                .HasIndex(te => te.EntryDate);
 
             modelBuilder.Entity<TimeEntry>()
-                .Property(t => t.CreatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                .HasIndex(te => te.EmployeeId);
 
-            modelBuilder.Entity<DayMarker>()
-                .Property(d => d.CreatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+            modelBuilder.Entity<TimeEntry>()
+                .HasIndex(te => te.ProjectId);
+
+            modelBuilder.Entity<Client>()
+                .HasIndex(c => c.Name);
+
+            modelBuilder.Entity<Client>()
+                .HasIndex(c => c.IsActive);
         }
     }
 }
