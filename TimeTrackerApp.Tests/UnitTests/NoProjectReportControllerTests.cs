@@ -161,9 +161,8 @@ public class NoProjectReportControllerTests : IDisposable
 
         var httpContext = new DefaultHttpContext { User = claimsPrincipal };
         
-        // Initialize TempData with a simple in-memory provider
-        var tempDataProvider = new SessionStateTempDataProvider();
-        var tempData = new TempDataDictionary(httpContext, tempDataProvider);
+        // Create a simple TempData dictionary for testing
+        var tempData = new TempDataDictionary(httpContext, new FakeTempDataProvider());
 
         _controller.ControllerContext = new ControllerContext
         {
@@ -171,6 +170,26 @@ public class NoProjectReportControllerTests : IDisposable
         };
         
         _controller.TempData = tempData;
+    }
+
+    // Simple fake TempData provider for testing
+    private class FakeTempDataProvider : ITempDataProvider
+    {
+        private readonly Dictionary<string, object> _data = new();
+
+        public IDictionary<string, object> LoadTempData(HttpContext context)
+        {
+            return _data;
+        }
+
+        public void SaveTempData(HttpContext context, IDictionary<string, object> values)
+        {
+            _data.Clear();
+            foreach (var kvp in values)
+            {
+                _data[kvp.Key] = kvp.Value;
+            }
+        }
     }
 
     [Fact]
