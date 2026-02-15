@@ -114,8 +114,12 @@ namespace TimeTrackerApp.Controllers
             }
             else
             {
-                dostepneProjekty = await _context.Projects.ToListAsync();
-                dostepneProjekty = dostepneProjekty.OrderBy(p => p.Name).ToList();
+                // dla admin/manager pokazujemy projekty przypisane do wybranego pracownika
+                var pracownikZProjektami = await _context.Employees
+                    .Include(e => e.Projects)
+                    .FirstOrDefaultAsync(e => e.Id == wybranyPracownik.Id);
+                
+                dostepneProjekty = pracownikZProjektami?.Projects.OrderBy(p => p.Name).ToList() ?? new List<Project>();
             }
 
             // organizujemy wpisy według dni
@@ -172,7 +176,9 @@ namespace TimeTrackerApp.Controllers
         public async Task<IActionResult> AddEntry([FromBody] AddEntryRequest request)
         {
             var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
-            var pracownik = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
+            var pracownik = await _context.Employees
+                .Include(e => e.Projects)
+                .FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
 
             // sprawdzamy uprawnienia
             if (pracownik == null && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
@@ -183,6 +189,24 @@ namespace TimeTrackerApp.Controllers
             if (pracownik != null && request.EmployeeId != pracownik.Id && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
             {
                 return Json(new { success = false, message = "Brak uprawnień" });
+            }
+
+            // sprawdzamy czy pracownik jest przypisany do projektu (jeśli projekt został wybrany)
+            if (request.ProjectId.HasValue)
+            {
+                var celPracownik = await _context.Employees
+                    .Include(e => e.Projects)
+                    .FirstOrDefaultAsync(e => e.Id == request.EmployeeId);
+
+                if (celPracownik != null && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
+                {
+                    // pracownik może rejestrować czas tylko w przypisanych projektach
+                    var czyPrzypisany = celPracownik.Projects.Any(p => p.Id == request.ProjectId.Value);
+                    if (!czyPrzypisany)
+                    {
+                        return Json(new { success = false, message = "Nie jesteś przypisany do tego projektu" });
+                    }
+                }
             }
 
             // tworzymy nowy wpis czasu
@@ -214,12 +238,31 @@ namespace TimeTrackerApp.Controllers
             }
 
             var aktualnyUzytkownik = await PobierzAktualnegoUzytkownika();
-            var pracownik = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
+            var pracownik = await _context.Employees
+                .Include(e => e.Projects)
+                .FirstOrDefaultAsync(e => e.UserId == aktualnyUzytkownik.Id);
 
             // tylko właściciel lub admin/manager może edytować
             if (pracownik != null && wpis.EmployeeId != pracownik.Id && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
             {
                 return Json(new { success = false, message = "Brak uprawnień" });
+            }
+
+            // sprawdzamy czy pracownik jest przypisany do nowego projektu
+            if (request.ProjectId.HasValue)
+            {
+                var celPracownik = await _context.Employees
+                    .Include(e => e.Projects)
+                    .FirstOrDefaultAsync(e => e.Id == wpis.EmployeeId);
+
+                if (celPracownik != null && !CzyMaUprawnienia(aktualnyUzytkownik.Role))
+                {
+                    var czyPrzypisany = celPracownik.Projects.Any(p => p.Id == request.ProjectId.Value);
+                    if (!czyPrzypisany)
+                    {
+                        return Json(new { success = false, message = "Nie jesteś przypisany do tego projektu" });
+                    }
+                }
             }
 
             // aktualizujemy dane
