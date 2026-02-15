@@ -23,17 +23,49 @@ namespace TimeTrackerApp.Controllers
             _context = context;
         }
 
-        public async Task<IActionResult> Index()
+        // ✅ ADDED: Filtrowanie projektów
+        public async Task<IActionResult> Index(string searchName, int? managerId, ProjectStatus? status)
         {
             // pobieramy wszystkie projekty z pracownikami, wpisami czasu i managerem
-            var projekty = await _context.Projects
+            var projektyQuery = _context.Projects
                 .Include(p => p.Employees)
                 .Include(p => p.TimeEntries)
                 .Include(p => p.Manager)
                     .ThenInclude(m => m.User)
+                .AsQueryable();
+
+            // ✅ Filtrowanie po nazwie
+            if (!string.IsNullOrWhiteSpace(searchName))
+            {
+                projektyQuery = projektyQuery.Where(p => p.Name.Contains(searchName));
+                ViewBag.SearchName = searchName;
+            }
+
+            // ✅ Filtrowanie po opiekunie
+            if (managerId.HasValue)
+            {
+                projektyQuery = projektyQuery.Where(p => p.ManagerId == managerId.Value);
+                ViewBag.ManagerId = managerId.Value;
+            }
+
+            // ✅ Filtrowanie po statusie
+            if (status.HasValue)
+            {
+                projektyQuery = projektyQuery.Where(p => p.Status == status.Value);
+                ViewBag.Status = status.Value;
+            }
+
+            var projekty = await projektyQuery.OrderBy(p => p.Name).ToListAsync();
+
+            // ✅ Lista opiekunów (managerów) do filtra
+            var managers = await _context.Employees
+                .Include(e => e.User)
+                .Where(e => e.IsActive && e.User.Role == UserRole.Manager)
+                .OrderBy(e => e.User.LastName)
+                .ThenBy(e => e.User.FirstName)
                 .ToListAsync();
-            
-            projekty = projekty.OrderBy(p => p.Name).ToList();
+
+            ViewBag.Managers = managers;
 
             return View(projekty);
         }
