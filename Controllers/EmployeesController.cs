@@ -45,6 +45,7 @@ namespace TimeTrackerApp.Controllers
             var pracownik = await _context.Employees
                 .Include(e => e.User)
                 .Include(e => e.TimeEntries)
+                .Include(e => e.Projects)  // dodajemy ładowanie projektów!
                 .FirstOrDefaultAsync(e => e.Id == id);
 
             if (pracownik == null)
