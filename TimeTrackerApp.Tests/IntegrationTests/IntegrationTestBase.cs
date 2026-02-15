@@ -53,40 +53,37 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
         var adminUser = new User
         {
             Id = 1,
-            Username = "admin",
+            Login = "admin",
             Email = "admin@test.com",
             FirstName = "Admin",
             LastName = "User",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
             Role = UserRole.Admin,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            IsActive = true
         };
 
         var managerUser = new User
         {
             Id = 2,
-            Username = "manager",
+            Login = "manager",
             Email = "manager@test.com",
             FirstName = "Manager",
             LastName = "User",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Manager123!"),
             Role = UserRole.Manager,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            IsActive = true
         };
 
         var employeeUser = new User
         {
             Id = 3,
-            Username = "employee",
+            Login = "employee",
             Email = "employee@test.com",
             FirstName = "Employee",
             LastName = "User",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Employee123!"),
             Role = UserRole.Employee,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            IsActive = true
         };
 
         db.Users.AddRange(adminUser, managerUser, employeeUser);
@@ -124,8 +121,7 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             Id = 1,
             Name = "Project Alpha",
             Description = "Test project Alpha",
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            IsActive = true
         };
 
         var project2 = new Project
@@ -133,8 +129,7 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             Id = 2,
             Name = "Project Beta",
             Description = "Test project Beta",
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            IsActive = true
         };
 
         db.Projects.AddRange(project1, project2);
@@ -145,12 +140,11 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             Id = 1,
             EmployeeId = 3,
             ProjectId = 1,
-            Date = DateTime.Today,
+            EntryDate = DateTime.Today,
             StartTime = new TimeSpan(9, 0, 0),
             EndTime = new TimeSpan(17, 0, 0),
             Description = "Development work",
-            Status = EntryStatus.Pending,
-            CreatedAt = DateTime.UtcNow
+            ApprovalStatus = ApprovalStatus.Pending
         };
 
         db.TimeEntries.Add(entry1);
@@ -161,7 +155,7 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
     {
         var loginData = new FormUrlEncodedContent(new[]
         {
-            new KeyValuePair<string, string>("Username", username),
+            new KeyValuePair<string, string>("Login", username),
             new KeyValuePair<string, string>("Password", password)
         });
 
