@@ -1,7 +1,10 @@
 @model IEnumerable<TimeTrackerApp.Models.TimeEntry>
+@using TimeTrackerApp.Models
 
 @{
     ViewData["Title"] = "Wpisy czasu";
+    var user = ViewContext.HttpContext.User;
+    var isEmployee = user.IsInRole("Employee");
 }
 
 <div style="margin-top: 2rem;">
@@ -14,6 +17,68 @@
             <a asp-controller="Calendar" asp-action="Index" class="btn btn-secondary">Kalendarz</a>
             <a asp-action="Create" class="btn btn-primary">+ Dodaj wpis</a>
         </div>
+    </div>
+
+    <!-- ✅ ADDED: Formularz filtrowania -->
+    <div style="background: var(--background-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+        <form method="get" asp-action="Index">
+            @if (isEmployee)
+            {
+                <!-- Pracownik widzi tylko filtr projektu -->
+                <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: end;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Projekt</label>
+                        <select name="projectId" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                            <option value="">Wszystkie projekty</option>
+                            @foreach (var project in (List<Project>)ViewBag.Projects)
+                            {
+                                <option value="@project.Id" selected="@(ViewBag.ProjectId == project.Id ? "selected" : null)">
+                                    @project.Name
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button type="submit" class="btn btn-primary">🔍 Filtruj</button>
+                        <a asp-action="Index" class="btn btn-secondary">✖️ Wyczyść</a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- Manager/Admin widzi filtry pracownika i projektu -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Pracownik</label>
+                        <select name="employeeId" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                            <option value="">Wszyscy pracownicy</option>
+                            @foreach (var employee in (List<Employee>)ViewBag.Employees)
+                            {
+                                <option value="@employee.Id" selected="@(ViewBag.EmployeeId == employee.Id ? "selected" : null)">
+                                    @employee.User.FirstName @employee.User.LastName
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Projekt</label>
+                        <select name="projectId" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                            <option value="">Wszystkie projekty</option>
+                            @foreach (var project in (List<Project>)ViewBag.Projects)
+                            {
+                                <option value="@project.Id" selected="@(ViewBag.ProjectId == project.Id ? "selected" : null)">
+                                    @project.Name
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button type="submit" class="btn btn-primary">🔍 Filtruj</button>
+                        <a asp-action="Index" class="btn btn-secondary">✖️ Wyczyść</a>
+                    </div>
+                </div>
+            }
+        </form>
     </div>
 
     <table>
