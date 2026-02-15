@@ -38,7 +38,7 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseExceptionHandler("/Account/Login");
     app.UseHsts();
 }
 
@@ -50,9 +50,16 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// ✅ FIXED: Redirect root to login page
+app.MapGet("/", context =>
+{
+    context.Response.Redirect("/Account/Login");
+    return Task.CompletedTask;
+});
+
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{controller=Account}/{action=Login}/{id?}");
 
 // ✅ FIXED: Apply migrations + Seed data
 using (var scope = app.Services.CreateScope())
