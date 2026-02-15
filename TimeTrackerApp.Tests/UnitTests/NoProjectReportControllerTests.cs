@@ -39,7 +39,6 @@ public class NoProjectReportControllerTests : IDisposable
         var employeeUser = new User
         {
             Id = 3,
-            Username = "employee@test.com",
             Email = "employee@test.com",
             FirstName = "Jan",
             LastName = "Kowalski",
@@ -50,7 +49,6 @@ public class NoProjectReportControllerTests : IDisposable
         var managerUser = new User
         {
             Id = 2,
-            Username = "manager@test.com",
             Email = "manager@test.com",
             FirstName = "Anna",
             LastName = "Manager",
@@ -77,6 +75,8 @@ public class NoProjectReportControllerTests : IDisposable
             Id = 1,
             Name = "Project A",
             IsActive = true,
+            StartDate = DateTime.Today,
+            ManagerId = 2,
             Employees = new List<Employee> { employee }
         };
 
@@ -85,6 +85,8 @@ public class NoProjectReportControllerTests : IDisposable
             Id = 2,
             Name = "Project B",
             IsActive = true,
+            StartDate = DateTime.Today,
+            ManagerId = 2,
             Employees = new List<Employee> { employee }
         };
 
@@ -100,7 +102,7 @@ public class NoProjectReportControllerTests : IDisposable
             StartTime = TimeSpan.FromHours(9),
             EndTime = TimeSpan.FromHours(12),
             Description = "Work with project",
-            CreatedByUserId = 3
+            CreatedBy = 3
         };
 
         var entryWithoutProject1 = new TimeEntry
@@ -112,7 +114,7 @@ public class NoProjectReportControllerTests : IDisposable
             StartTime = TimeSpan.FromHours(13),
             EndTime = TimeSpan.FromHours(15),
             Description = "Work without project",
-            CreatedByUserId = 3
+            CreatedBy = 3
         };
 
         var entryWithoutProject2 = new TimeEntry
@@ -124,7 +126,7 @@ public class NoProjectReportControllerTests : IDisposable
             StartTime = TimeSpan.FromHours(10),
             EndTime = TimeSpan.FromHours(11),
             Description = "Another entry without project",
-            CreatedByUserId = 3
+            CreatedBy = 3
         };
 
         _context.TimeEntries.AddRange(entryWithProject, entryWithoutProject1, entryWithoutProject2);
@@ -228,22 +230,17 @@ public class NoProjectReportControllerTests : IDisposable
     public async Task AssignProject_WithValidData_AssignsProjectSuccessfully()
     {
         // Arrange
-        var request = new
+        var request = new Controllers.NoProjectReportController.AssignProjectRequest
         {
             EntryId = 2,
             ProjectId = 1
         };
 
         // Act
-        var result = await _controller.AssignProject(new NoProjectReportController.AssignProjectRequest
-        {
-            EntryId = request.EntryId,
-            ProjectId = request.ProjectId
-        });
+        var result = await _controller.AssignProject(request);
 
         // Assert
         result.Should().BeOfType<JsonResult>();
-        var jsonResult = result as JsonResult;
         
         // Check database
         var entry = await _context.TimeEntries.FindAsync(2);
@@ -254,7 +251,7 @@ public class NoProjectReportControllerTests : IDisposable
     public async Task AssignProject_WithNonExistentEntry_ReturnsFailure()
     {
         // Arrange
-        var request = new NoProjectReportController.AssignProjectRequest
+        var request = new Controllers.NoProjectReportController.AssignProjectRequest
         {
             EntryId = 999,
             ProjectId = 1
@@ -274,6 +271,17 @@ public class NoProjectReportControllerTests : IDisposable
         SetupControllerContext(3); // Employee
 
         // Create entry for different employee
+        var otherUser = new User
+        {
+            Id = 99,
+            Email = "other@test.com",
+            FirstName = "Other",
+            LastName = "User",
+            PasswordHash = "hash",
+            Role = UserRole.Employee
+        };
+        _context.Users.Add(otherUser);
+
         var otherEmployee = new Employee
         {
             Id = 99,
@@ -291,12 +299,12 @@ public class NoProjectReportControllerTests : IDisposable
             EntryDate = DateTime.Today,
             StartTime = TimeSpan.FromHours(9),
             EndTime = TimeSpan.FromHours(10),
-            CreatedByUserId = 99
+            CreatedBy = 99
         };
         _context.TimeEntries.Add(otherEntry);
         await _context.SaveChangesAsync();
 
-        var request = new NoProjectReportController.AssignProjectRequest
+        var request = new Controllers.NoProjectReportController.AssignProjectRequest
         {
             EntryId = 100,
             ProjectId = 1

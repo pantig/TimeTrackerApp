@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
@@ -75,13 +76,10 @@ public class NoProjectReportTests : IntegrationTestBase
         var createResponse = await Client.PostAsJsonAsync("/Calendar/AddEntry", entryData);
         createResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // Get entry ID from response
-        var createResult = await createResponse.Content.ReadFromJsonAsync<dynamic>();
-        
         // Now assign project
         var assignData = new
         {
-            entryId = 1, // Assuming first entry
+            entryId = 1,
             projectId = 1
         };
 
@@ -103,7 +101,7 @@ public class NoProjectReportTests : IntegrationTestBase
         // Try to assign project to entry that belongs to another employee
         var assignData = new
         {
-            entryId = 999, // Non-existent or other employee's entry
+            entryId = 999,
             projectId = 1
         };
 
