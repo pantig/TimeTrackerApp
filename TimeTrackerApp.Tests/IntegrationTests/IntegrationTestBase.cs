@@ -12,11 +12,6 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
     protected readonly WebApplicationFactory<Program> Factory;
     protected HttpClient Client;
 
-    // 🔑 Stałe hashe wygenerowane raz dla known passwords
-    protected const string AdminPasswordHash = "$2a$11$8K1p/a0dL3.E9xEze8G9yOxO8B1v3QZF7X7bh/Kz8IiXkHq.lLQ6a"; // Admin123!
-    protected const string ManagerPasswordHash = "$2a$11$8K1p/a0dL3.E9xEze8G9yOxO8B1v3QZF7X7bh/Kz8IiXkHq.lLQ6a"; // Manager123!
-    protected const string EmployeePasswordHash = "$2a$11$8K1p/a0dL3.E9xEze8G9yOxO8B1v3QZF7X7bh/Kz8IiXkHq.lLQ6a"; // Employee123!
-
     public IntegrationTestBase(WebApplicationFactory<Program> factory)
     {
         Factory = factory.WithWebHostBuilder(builder =>
@@ -55,14 +50,17 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
 
     protected virtual void SeedTestData(ApplicationDbContext db)
     {
-        // ✅ Używamy stałych hashy - każdy test ma identycznehashe!
+        // ✅ Hashujemy hasła tutaj - zawsze te same plaintext hasła = te same hashe dla BCrypt z tym samym salt
+        // Ale BCrypt.Net używa losowego salt, więc użyjemy PROSTYCH hasły
+        // Rozwiązanie: hashowanie NA POCZĄTKU z BCrypt.HashPassword()
+        
         var adminUser = new User
         {
             Id = 1,
             Email = "admin@test.com",
             FirstName = "Admin",
             LastName = "User",
-            PasswordHash = AdminPasswordHash,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
             Role = UserRole.Admin,
             IsActive = true
         };
@@ -73,7 +71,7 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             Email = "manager@test.com",
             FirstName = "Manager",
             LastName = "User",
-            PasswordHash = ManagerPasswordHash,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Manager123!"),
             Role = UserRole.Manager,
             IsActive = true
         };
@@ -84,7 +82,7 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
             Email = "employee@test.com",
             FirstName = "Employee",
             LastName = "User",
-            PasswordHash = EmployeePasswordHash,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Employee123!"),
             Role = UserRole.Employee,
             IsActive = true
         };
@@ -167,11 +165,11 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
 
         var response = await Client.PostAsync("/Account/Login", loginData);
         
-        // ✅ Assert: Logowanie musi zwrócić 302 Redirect!
+        // ✅ Logowanie powinno zwrócić 302 Redirect do dashboard
         if (response.StatusCode != System.Net.HttpStatusCode.Redirect)
         {
             var content = await response.Content.ReadAsStringAsync();
-            throw new Exception($"Login failed! Status: {response.StatusCode}. Content: {content.Substring(0, Math.Min(500, content.Length))}");
+            throw new Exception($"Login failed for {email}! Status: {response.StatusCode}\nResponse (first 500 chars): {content.Substring(0, Math.Min(500, content.Length))}");
         }
     }
 }
