@@ -8,6 +8,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using TimeTrackerApp.Data;
 using TimeTrackerApp.Models;
+using TimeTrackerApp.Models.ViewModels;
 using TimeTrackerApp.Services;
 
 namespace TimeTrackerApp.Controllers
@@ -341,6 +342,98 @@ namespace TimeTrackerApp.Controllers
 
             TempData["SuccessMessage"] = "Projekt został usunięty.";
             return RedirectToAction(nameof(Index));
+        }
+
+        // GET: Projects/Report/5
+        public async Task<IActionResult> Report(int id)
+        {
+            var project = await _context.Projects
+                .Include(p => p.Manager)
+                    .ThenInclude(m => m.User)
+                .Include(p => p.Client)
+                .Include(p => p.Employees)
+                    .ThenInclude(e => e.User)
+                .Include(p => p.TimeEntries)
+                    .ThenInclude(te => te.Employee)
+                        .ThenInclude(e => e.User)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (project == null)
+            {
+                TempData["ErrorMessage"] = "Projekt nie został znaleziony.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Grupowanie wpisów czasu według pracowników
+            var employeeTimeEntries = new List<EmployeeTimeEntry>();
+
+            var employeesWithEntries = project.TimeEntries
+                .GroupBy(te => te.EmployeeId)
+                .Select(g => new
+                {
+                    EmployeeId = g.Key,
+                    Employee = g.First().Employee,
+                    TotalHours = g.Sum(te => te.TotalHours),
+                    EntriesCount = g.Count(),
+                    FirstEntry = g.Min(te => te.Date),
+                    LastEntry = g.Max(te => te.Date)
+                });
+
+            foreach (var emp in employeesWithEntries)
+            {
+                employeeTimeEntries.Add(new EmployeeTimeEntry
+                {
+                    EmployeeId = emp.EmployeeId,
+                    EmployeeName = $"{emp.Employee.User.FirstName} {emp.Employee.User.LastName}",
+                    Position = emp.Employee.Position ?? "Nie określono",
+                    TotalHours = emp.TotalHours,
+                    EntriesCount = emp.EntriesCount,
+                    FirstEntry = emp.FirstEntry,
+                    LastEntry = emp.LastEntry
+                });
+            }
+
+            // Sortowanie według godzin malejąco
+            employeeTimeEntries = employeeTimeEntries.OrderByDescending(e => e.TotalHours).ToList();
+
+            // Obliczanie statystyk projektu
+            var totalHours = project.TimeEntries.Sum(te => te.TotalHours);
+            decimal? budgetUsagePercentage = null;
+
+            if (project.HoursBudget.HasValue && project.HoursBudget.Value > 0)
+            {
+                budgetUsagePercentage = (totalHours / project.HoursBudget.Value) * 100;
+            }
+
+            var daysActive = 0;
+            if (project.TimeEntries.Any())
+            {
+                var firstEntry = project.TimeEntries.Min(te => te.Date);
+                var lastEntry = project.TimeEntries.Max(te => te.Date);
+                daysActive = (lastEntry - firstEntry).Days + 1;
+            }
+
+            var summary = new ProjectSummary
+            {
+                TotalEmployees = project.Employees.Count,
+                ActiveEmployees = employeeTimeEntries.Count,
+                TotalHoursLogged = totalHours,
+                HoursBudget = project.HoursBudget,
+                BudgetUsagePercentage = budgetUsagePercentage,
+                TotalEntries = project.TimeEntries.Count,
+                ProjectStartDate = project.StartDate,
+                ProjectEndDate = project.EndDate,
+                DaysActive = daysActive
+            };
+
+            var viewModel = new ProjectReportViewModel
+            {
+                Project = project,
+                EmployeeTimeEntries = employeeTimeEntries,
+                Summary = summary
+            };
+
+            return View(viewModel);
         }
     }
 }
