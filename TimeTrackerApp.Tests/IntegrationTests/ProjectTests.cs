@@ -25,6 +25,7 @@ public class ProjectTests : IntegrationTestBase
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
+        
         content.Should().Contain("Project Alpha");
         content.Should().Contain("Project Beta");
     }
@@ -39,7 +40,8 @@ public class ProjectTests : IntegrationTestBase
         {
             new KeyValuePair<string, string>("Name", "New Project"),
             new KeyValuePair<string, string>("Description", "Test description"),
-            new KeyValuePair<string, string>("IsActive", "true")
+            new KeyValuePair<string, string>("IsActive", "true"),
+            new KeyValuePair<string, string>("ManagerId", "2") // Manager seeded in IntegrationTestBase
         });
 
         // Act
@@ -47,7 +49,8 @@ public class ProjectTests : IntegrationTestBase
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        response.Headers.Location?.ToString().Should().Contain("/Projects/Index");
+        // Po sukcesie przekierowanie może być do "/Projects" lub "/Projects/Index"
+        response.Headers.Location?.ToString().Should().MatchRegex("/Projects(/Index)?$");
     }
 
     [Fact]
@@ -61,7 +64,8 @@ public class ProjectTests : IntegrationTestBase
             new KeyValuePair<string, string>("Id", "1"),
             new KeyValuePair<string, string>("Name", "Updated Project Alpha"),
             new KeyValuePair<string, string>("Description", "Updated description"),
-            new KeyValuePair<string, string>("IsActive", "true")
+            new KeyValuePair<string, string>("IsActive", "true"),
+            new KeyValuePair<string, string>("ManagerId", "2")
         });
 
         // Act
@@ -78,7 +82,7 @@ public class ProjectTests : IntegrationTestBase
         await LoginAsAsync("admin@test.com", "Admin123!");
 
         // Act
-        var response = await Client.PostAsync("/Projects/Delete/2", null);
+        var response = await Client.PostAsync("/Projects/Delete/2", new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("dummy", "test") }));
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Redirect);

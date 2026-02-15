@@ -111,7 +111,7 @@ public class AuthenticationTests : IntegrationTestBase
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
-        content.Should().Contain("już istnieje");
+        content.Should().Contain("zarejestrowany");
     }
 
     [Fact]

@@ -28,15 +28,17 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
                 }
 
                 // Add in-memory database for testing
+                var dbName = "TestDb_" + Guid.NewGuid().ToString();
                 services.AddDbContext<ApplicationDbContext>(options =>
                 {
-                    options.UseInMemoryDatabase("TestDb_" + Guid.NewGuid().ToString());
+                    options.UseInMemoryDatabase(dbName);
                 });
 
                 // Seed test data
                 var sp = services.BuildServiceProvider();
                 using var scope = sp.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                db.Database.EnsureCreated();
                 SeedTestData(db);
             });
         });
@@ -137,6 +139,10 @@ public class IntegrationTestBase : IClassFixture<WebApplicationFactory<Program>>
         };
 
         db.Projects.AddRange(project1, project2);
+
+        // Assign employee to project
+        employeeEmployee.Projects.Add(project1);
+        employeeEmployee.Projects.Add(project2);
 
         // Test time entries
         var entry1 = new TimeEntry
