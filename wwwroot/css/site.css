@@ -1013,6 +1013,30 @@ tbody tr:hover {
   background: var(--bg-tertiary);
 }
 
+/* ===========================================
+   WPISY BEZ PROJEKTU - Warning styling
+   =========================================== */
+
+/* Kalendarz - wpis bez projektu ma kolor warning */
+.timegrid-entry[data-project-id=""] {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.85) 0%, rgba(234, 179, 8, 0.95) 100%) !important;
+  border-left: 3px solid #ca8a04 !important;
+}
+
+.timegrid-entry[data-project-id=""]:hover {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.90) 0%, rgba(234, 179, 8, 1) 100%) !important;
+}
+
+/* Tabela - wpis bez projektu ma żółte obramowanie */
+.no-project-entry-row {
+  border-left: 3px solid #eab308;
+  background: rgba(234, 179, 8, 0.05);
+}
+
+.no-project-entry-row:hover {
+  background: rgba(234, 179, 8, 0.1);
+}
+
 /* === RESPONSIVE === */
 @media (max-width: 1024px) {
   .timegrid {
