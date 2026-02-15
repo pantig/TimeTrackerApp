@@ -17,8 +17,7 @@ public class CalendarTests : IntegrationTestBase
     public async Task GetCalendarView_AsEmployee_ReturnsCurrentWeek()
     {
         // Arrange
-        var cookie = await LoginAsAsync("employee@test.com", "Employee123!");
-        SetAuthCookie(cookie);
+        await LoginAsAsync("employee@test.com", "Employee123!");
 
         // Act
         var response = await Client.GetAsync("/Calendar/Index");
@@ -34,8 +33,7 @@ public class CalendarTests : IntegrationTestBase
     public async Task GetCalendarView_WithSpecificDate_ReturnsCorrectWeek()
     {
         // Arrange
-        var cookie = await LoginAsAsync("employee@test.com", "Employee123!");
-        SetAuthCookie(cookie);
+        await LoginAsAsync("employee@test.com", "Employee123!");
         var date = "2026-02-10";
 
         // Act
@@ -51,8 +49,7 @@ public class CalendarTests : IntegrationTestBase
     public async Task SetDayMarker_WithValidData_SetsMarker()
     {
         // Arrange
-        var cookie = await LoginAsAsync("employee@test.com", "Employee123!");
-        SetAuthCookie(cookie);
+        await LoginAsAsync("employee@test.com", "Employee123!");
 
         var markerData = new
         {
@@ -77,8 +74,7 @@ public class CalendarTests : IntegrationTestBase
     public async Task RemoveDayMarker_ExistingMarker_RemovesSuccessfully()
     {
         // Arrange
-        var cookie = await LoginAsAsync("employee@test.com", "Employee123!");
-        SetAuthCookie(cookie);
+        await LoginAsAsync("employee@test.com", "Employee123!");
 
         // First set a marker
         var markerData = new
@@ -112,8 +108,7 @@ public class CalendarTests : IntegrationTestBase
     public async Task NavigateCalendar_PreviousWeek_ShowsPreviousWeek()
     {
         // Arrange
-        var cookie = await LoginAsAsync("employee@test.com", "Employee123!");
-        SetAuthCookie(cookie);
+        await LoginAsAsync("employee@test.com", "Employee123!");
         var today = DateTime.Today;
         var prevWeek = today.AddDays(-7).ToString("yyyy-MM-dd");
 
@@ -128,8 +123,7 @@ public class CalendarTests : IntegrationTestBase
     public async Task NavigateCalendar_NextWeek_ShowsNextWeek()
     {
         // Arrange
-        var cookie = await LoginAsAsync("employee@test.com", "Employee123!");
-        SetAuthCookie(cookie);
+        await LoginAsAsync("employee@test.com", "Employee123!");
         var today = DateTime.Today;
         var nextWeek = today.AddDays(7).ToString("yyyy-MM-dd");
 

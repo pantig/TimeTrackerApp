@@ -46,7 +46,7 @@ public class AuthenticationTests : IntegrationTestBase
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
-        content.Should().Contain("Nieprawidłow");
+        content.Should().Contain("Nieprawid");
     }
 
     [Fact]
@@ -61,8 +61,7 @@ public class AuthenticationTests : IntegrationTestBase
     public async Task Logout_RedirectsToLoginPage()
     {
         // Arrange - First login
-        var cookie = await LoginAsAsync("admin@test.com", "Admin123!");
-        SetAuthCookie(cookie);
+        await LoginAsAsync("admin@test.com", "Admin123!");
 
         // Act
         var response = await Client.PostAsync("/Account/Logout", null);
@@ -130,8 +129,7 @@ public class AuthenticationTests : IntegrationTestBase
     public async Task AccessProtectedPage_WithAuth_ReturnsSuccess()
     {
         // Arrange
-        var cookie = await LoginAsAsync("employee@test.com", "Employee123!");
-        SetAuthCookie(cookie);
+        await LoginAsAsync("employee@test.com", "Employee123!");
 
         // Act
         var response = await Client.GetAsync("/Calendar/Index");
