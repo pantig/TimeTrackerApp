@@ -7,7 +7,13 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <PreserveCompilationContext>true</PreserveCompilationContext>
+    <OutputType>Library</OutputType>
   </PropertyGroup>
+
+  <!-- ✅ FIX: Dodanie referencji do ASP.NET Core framework -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
@@ -23,10 +29,24 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.0" />
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
+    <!-- ✅ FIX: Razor Runtime Compilation dla testów -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\TimeTrackerApp.csproj" />
+  </ItemGroup>
+
+  <!-- ✅ FIX: Kopiowanie plików Views z głównego projektu do testów -->
+  <ItemGroup>
+    <Content Include="..\Views\**\*.cshtml">
+      <Link>Views\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\wwwroot\**\*.*">
+      <Link>wwwroot\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

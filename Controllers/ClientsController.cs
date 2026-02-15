@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using TimeTrackerApp.Data;
 using TimeTrackerApp.Models;
 using TimeTrackerApp.Models.ViewModels;
@@ -17,13 +18,21 @@ namespace TimeTrackerApp.Controllers
             _context = context;
         }
 
-        // GET: Clients
-        public async Task<IActionResult> Index()
+        // ✅ ADDED: Filtrowanie klientów po nazwie
+        public async Task<IActionResult> Index(string searchName)
         {
-            var clients = await _context.Clients
+            var clientsQuery = _context.Clients
                 .Include(c => c.Projects)
-                .OrderBy(c => c.Name)
-                .ToListAsync();
+                .AsQueryable();
+
+            // ✅ Filtrowanie po nazwie
+            if (!string.IsNullOrWhiteSpace(searchName))
+            {
+                clientsQuery = clientsQuery.Where(c => c.Name.Contains(searchName));
+                ViewBag.SearchName = searchName;
+            }
+
+            var clients = await clientsQuery.OrderBy(c => c.Name).ToListAsync();
 
             return View(clients);
         }

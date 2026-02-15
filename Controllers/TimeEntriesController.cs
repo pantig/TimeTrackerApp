@@ -22,7 +22,8 @@ namespace TimeTrackerApp.Controllers
             _timeEntryService = timeEntryService;
         }
 
-        public async Task<IActionResult> Index()
+        // ✅ ADDED: Filtrowanie wpisów czasu
+        public async Task<IActionResult> Index(int? employeeId, int? projectId)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null) return Challenge();
@@ -47,7 +48,51 @@ namespace TimeTrackerApp.Controllers
                     query = query.Where(t => false); // Brak powiązanego pracownika
             }
 
+            // ✅ Filtrowanie po pracowniku (tylko dla Manager/Admin)
+            if (employeeId.HasValue && user.Role != UserRole.Employee)
+            {
+                query = query.Where(t => t.EmployeeId == employeeId.Value);
+                ViewBag.EmployeeId = employeeId.Value;
+            }
+
+            // ✅ Filtrowanie po projekcie
+            if (projectId.HasValue)
+            {
+                query = query.Where(t => t.ProjectId == projectId.Value);
+                ViewBag.ProjectId = projectId.Value;
+            }
+
             var timeEntries = await query.OrderByDescending(t => t.EntryDate).ToListAsync();
+
+            // ✅ Lista pracowników do filtra (tylko dla Manager/Admin)
+            if (user.Role != UserRole.Employee)
+            {
+                var employees = await _context.Employees
+                    .Include(e => e.User)
+                    .Where(e => e.IsActive)
+                    .OrderBy(e => e.User.LastName)
+                    .ThenBy(e => e.User.FirstName)
+                    .ToListAsync();
+                ViewBag.Employees = employees;
+            }
+
+            // ✅ Lista projektów do filtra
+            List<Project> projects;
+            if (user.Role == UserRole.Employee)
+            {
+                var employee = await _context.Employees
+                    .Include(e => e.Projects)
+                    .FirstOrDefaultAsync(e => e.UserId == userId);
+                projects = employee?.Projects.Where(p => p.IsActive).OrderBy(p => p.Name).ToList() ?? new List<Project>();
+            }
+            else
+            {
+                projects = await _context.Projects
+                    .Where(p => p.IsActive)
+                    .OrderBy(p => p.Name)
+                    .ToListAsync();
+            }
+            ViewBag.Projects = projects;
 
             return View(timeEntries);
         }

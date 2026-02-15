@@ -8,6 +8,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using TimeTrackerApp.Data;
 using TimeTrackerApp.Models;
+using TimeTrackerApp.Models.ViewModels;
 using TimeTrackerApp.Services;
 
 namespace TimeTrackerApp.Controllers
@@ -22,17 +23,49 @@ namespace TimeTrackerApp.Controllers
             _context = context;
         }
 
-        public async Task<IActionResult> Index()
+        // ✅ ADDED: Filtrowanie projektów
+        public async Task<IActionResult> Index(string searchName, int? managerId, ProjectStatus? status)
         {
             // pobieramy wszystkie projekty z pracownikami, wpisami czasu i managerem
-            var projekty = await _context.Projects
+            var projektyQuery = _context.Projects
                 .Include(p => p.Employees)
                 .Include(p => p.TimeEntries)
                 .Include(p => p.Manager)
                     .ThenInclude(m => m.User)
+                .AsQueryable();
+
+            // ✅ Filtrowanie po nazwie
+            if (!string.IsNullOrWhiteSpace(searchName))
+            {
+                projektyQuery = projektyQuery.Where(p => p.Name.Contains(searchName));
+                ViewBag.SearchName = searchName;
+            }
+
+            // ✅ Filtrowanie po opiekunie
+            if (managerId.HasValue)
+            {
+                projektyQuery = projektyQuery.Where(p => p.ManagerId == managerId.Value);
+                ViewBag.ManagerId = managerId.Value;
+            }
+
+            // ✅ Filtrowanie po statusie
+            if (status.HasValue)
+            {
+                projektyQuery = projektyQuery.Where(p => p.Status == status.Value);
+                ViewBag.Status = status.Value;
+            }
+
+            var projekty = await projektyQuery.OrderBy(p => p.Name).ToListAsync();
+
+            // ✅ Lista opiekunów (managerów) do filtra
+            var managers = await _context.Employees
+                .Include(e => e.User)
+                .Where(e => e.IsActive && e.User.Role == UserRole.Manager)
+                .OrderBy(e => e.User.LastName)
+                .ThenBy(e => e.User.FirstName)
                 .ToListAsync();
-            
-            projekty = projekty.OrderBy(p => p.Name).ToList();
+
+            ViewBag.Managers = managers;
 
             return View(projekty);
         }
@@ -341,6 +374,98 @@ namespace TimeTrackerApp.Controllers
 
             TempData["SuccessMessage"] = "Projekt został usunięty.";
             return RedirectToAction(nameof(Index));
+        }
+
+        // GET: Projects/Report/5
+        public async Task<IActionResult> Report(int id)
+        {
+            var project = await _context.Projects
+                .Include(p => p.Manager)
+                    .ThenInclude(m => m.User)
+                .Include(p => p.Client)
+                .Include(p => p.Employees)
+                    .ThenInclude(e => e.User)
+                .Include(p => p.TimeEntries)
+                    .ThenInclude(te => te.Employee)
+                        .ThenInclude(e => e.User)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (project == null)
+            {
+                TempData["ErrorMessage"] = "Projekt nie został znaleziony.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Grupowanie wpisów czasu według pracowników
+            var employeeTimeEntries = new List<EmployeeTimeEntry>();
+
+            var employeesWithEntries = project.TimeEntries
+                .GroupBy(te => te.EmployeeId)
+                .Select(g => new
+                {
+                    EmployeeId = g.Key,
+                    Employee = g.First().Employee,
+                    TotalHours = g.Sum(te => te.TotalHours),
+                    EntriesCount = g.Count(),
+                    FirstEntry = g.Min(te => te.EntryDate),
+                    LastEntry = g.Max(te => te.EntryDate)
+                });
+
+            foreach (var emp in employeesWithEntries)
+            {
+                employeeTimeEntries.Add(new EmployeeTimeEntry
+                {
+                    EmployeeId = emp.EmployeeId,
+                    EmployeeName = $"{emp.Employee.User.FirstName} {emp.Employee.User.LastName}",
+                    Position = emp.Employee.Position ?? "Nie określono",
+                    TotalHours = emp.TotalHours,
+                    EntriesCount = emp.EntriesCount,
+                    FirstEntry = emp.FirstEntry,
+                    LastEntry = emp.LastEntry
+                });
+            }
+
+            // Sortowanie według godzin malejąco
+            employeeTimeEntries = employeeTimeEntries.OrderByDescending(e => e.TotalHours).ToList();
+
+            // Obliczanie statystyk projektu
+            var totalHours = project.TimeEntries.Sum(te => te.TotalHours);
+            decimal? budgetUsagePercentage = null;
+
+            if (project.HoursBudget.HasValue && project.HoursBudget.Value > 0)
+            {
+                budgetUsagePercentage = (totalHours / project.HoursBudget.Value) * 100;
+            }
+
+            var daysActive = 0;
+            if (project.TimeEntries.Any())
+            {
+                var firstEntry = project.TimeEntries.Min(te => te.EntryDate);
+                var lastEntry = project.TimeEntries.Max(te => te.EntryDate);
+                daysActive = (lastEntry - firstEntry).Days + 1;
+            }
+
+            var summary = new ProjectSummary
+            {
+                TotalEmployees = project.Employees.Count,
+                ActiveEmployees = employeeTimeEntries.Count,
+                TotalHoursLogged = totalHours,
+                HoursBudget = project.HoursBudget,
+                BudgetUsagePercentage = budgetUsagePercentage,
+                TotalEntries = project.TimeEntries.Count,
+                ProjectStartDate = project.StartDate,
+                ProjectEndDate = project.EndDate,
+                DaysActive = daysActive
+            };
+
+            var viewModel = new ProjectReportViewModel
+            {
+                Project = project,
+                EmployeeTimeEntries = employeeTimeEntries,
+                Summary = summary
+            };
+
+            return View(viewModel);
         }
     }
 }

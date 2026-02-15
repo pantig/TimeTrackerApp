@@ -13,6 +13,22 @@
         <a asp-action="Create" class="btn btn-primary">+ Dodaj klienta</a>
     </div>
 
+    <!-- ✅ ADDED: Formularz filtrowania -->
+    <div style="background: var(--background-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+        <form method="get" asp-action="Index">
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: end;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Nazwa klienta</label>
+                    <input type="text" name="searchName" value="@ViewBag.SearchName" placeholder="Szukaj..." style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;" />
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="submit" class="btn btn-primary">🔍 Filtruj</button>
+                    <a asp-action="Index" class="btn btn-secondary">✖️ Wyczyść</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
     <table>
         <thead>
             <tr>
