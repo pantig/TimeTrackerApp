@@ -4,7 +4,7 @@ namespace TimeTrackerApp.Models.ViewModels
     {
         public Client Client { get; set; } = null!;
         public List<ProjectStatistics> ProjectStatistics { get; set; } = new();
-        public ClientSummary Summary { get; set; } = new();
+        public ClientSummary Summary { get; set; } = null!;
     }
 
     public class ProjectStatistics
