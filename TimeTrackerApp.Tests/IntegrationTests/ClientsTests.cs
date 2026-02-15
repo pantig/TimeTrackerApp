@@ -3,13 +3,45 @@ using System.Net.Http.Headers;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace TimeTrackerApp.Tests.IntegrationTests;
 
 public class ClientsTests : IntegrationTestBase
 {
-    public ClientsTests(WebApplicationFactory<Program> factory) : base(factory)
+    private readonly ITestOutputHelper _output;
+
+    public ClientsTests(WebApplicationFactory<Program> factory, ITestOutputHelper output) : base(factory)
     {
+        _output = output;
+    }
+
+    [Fact]
+    public async Task Debug_CheckAvailableRoutes()
+    {
+        // Arrange
+        await LoginAsAsync("admin@test.com", "Admin123!");
+
+        // Test different route variations
+        var routes = new[] 
+        {
+            "/Clients",
+            "/Clients/Index",
+            "/clients",
+            "/clients/index"
+        };
+
+        foreach (var route in routes)
+        {
+            var response = await Client.GetAsync(route);
+            _output.WriteLine($"Route: {route} => Status: {response.StatusCode}");
+            
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                _output.WriteLine($"Content (first 200 chars): {content.Substring(0, Math.Min(200, content.Length))}");
+            }
+        }
     }
 
     [Fact]
@@ -17,6 +49,14 @@ public class ClientsTests : IntegrationTestBase
     {
         // Act
         var response = await Client.GetAsync("/Clients");
+
+        // Debug output
+        _output.WriteLine($"Status: {response.StatusCode}");
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            _output.WriteLine($"404 Response: {content.Substring(0, Math.Min(500, content.Length))}");
+        }
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Redirect);
@@ -31,6 +71,9 @@ public class ClientsTests : IntegrationTestBase
 
         // Act
         var response = await Client.GetAsync("/Clients");
+
+        // Debug
+        _output.WriteLine($"Employee Status: {response.StatusCode}");
 
         // Assert
         // ✅ FIXED: ASP.NET Core może przekierować (302) lub zwrócić 403
@@ -47,9 +90,14 @@ public class ClientsTests : IntegrationTestBase
         // Act
         var response = await Client.GetAsync("/Clients");
 
+        // Debug
+        _output.WriteLine($"Manager Status: {response.StatusCode}");
+        var content = await response.Content.ReadAsStringAsync();
+        _output.WriteLine($"Content length: {content.Length}");
+        _output.WriteLine($"Contains 'Klienci': {content.Contains("Klienci")}");
+
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var content = await response.Content.ReadAsStringAsync();
         content.Should().Contain("Klienci");
     }
 
@@ -61,6 +109,9 @@ public class ClientsTests : IntegrationTestBase
 
         // Act
         var response = await Client.GetAsync("/Clients");
+
+        // Debug
+        _output.WriteLine($"Admin Status: {response.StatusCode}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
