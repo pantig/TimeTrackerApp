@@ -121,12 +121,13 @@
                             var top = startHour * 60; // 60px per hour
                             var height = duration * 60;
 
-                            <div class="timegrid-entry"
+                            <div class="timegrid-entry draggable"
                                  style="top: @(top)px; height: @(height)px;"
                                  data-entry-id="@entry.Id"
                                  data-start="@entry.StartTime.ToString()"
                                  data-end="@entry.EndTime.ToString()"
-                                 data-project-id="@entry.ProjectId">
+                                 data-project-id="@entry.ProjectId"
+                                 draggable="true">
                                 <div class="entry-time">@entry.StartTime.ToString(@"hh\:mm") – @entry.EndTime.ToString(@"hh\:mm")</div>
                                 <div class="entry-project">@(entry.ProjectName ?? "(brak projektu)")</div>
                                 @if (!string.IsNullOrEmpty(entry.Description))
@@ -134,8 +135,10 @@
                                     <div class="entry-desc">@entry.Description</div>
                                 }
                                 <div class="entry-created-by">✍️ @entry.CreatedBy</div>
-                                <button class="entry-edit" onclick="editEntry(@entry.Id)">✎</button>
-                                <button class="entry-delete" onclick="deleteEntry(@entry.Id)">×</button>
+                                <button class="entry-edit" onclick="editEntry(@entry.Id); event.stopPropagation();">✎</button>
+                                <button class="entry-delete" onclick="deleteEntry(@entry.Id); event.stopPropagation();">×</button>
+                                <div class="resize-handle resize-handle-top" data-direction="top"></div>
+                                <div class="resize-handle resize-handle-bottom" data-direction="bottom"></div>
                             </div>
                         }
                     </div>
@@ -145,7 +148,12 @@
     </div>
 
     <div class="timegrid-legend">
-        <div class="hint">Kliknij i przeciągnij na siatce, aby dodać nowy wpis. Użyj przycisku ••• w nagłówku dnia, aby oznaczyć dzień.</div>
+        <div class="hint">
+            <strong>Wskazówki:</strong> 
+            <span>Przeciągnij wpis, aby przenieść. </span>
+            <span>Użyj uchwytów góra/dół, aby zmienić czas trwania. </span>
+            <span>Kliknij pustą przestrzeń, aby dodać nowy wpis.</span>
+        </div>
         <div style="display: flex; gap: 1rem; margin-top: 0.5rem; flex-wrap: wrap;">
             <div style="display: flex; align-items: center; gap: 0.25rem;">
                 <span style="display: inline-block; width: 16px; height: 16px; background: rgba(147, 51, 234, 0.2); border-radius: 3px;"></span>
@@ -250,6 +258,17 @@ let selectionStart = null;
 let selectionEnd = null;
 let currentDayCol = null;
 
+// Drag & Drop state
+let isDragging = false;
+let isResizing = false;
+let draggedEntry = null;
+let resizeDirection = null;
+let dragStartY = 0;
+let entryOriginalTop = 0;
+let entryOriginalHeight = 0;
+const PIXELS_PER_HOUR = 60;
+const SNAP_MINUTES = 15; // Snap to 15 minute intervals
+
 function changeEmployee(newEmployeeId) {
     const currentDate = '@Model.WeekStart.ToString("yyyy-MM-dd")';
     window.location.href = `@Url.Action("Index", "Calendar")?date=${currentDate}&employeeId=${newEmployeeId}`;
@@ -351,27 +370,273 @@ function updateDurationDisplay() {
     durationDiv.style.color = 'var(--text-secondary)';
 }
 
-// Mouse selection for creating new entries
+// Helper: Convert pixels to time (with snap)
+function pixelsToTime(pixels, snap = true) {
+    let totalMinutes = Math.round((pixels / PIXELS_PER_HOUR) * 60);
+    if (snap) {
+        totalMinutes = Math.round(totalMinutes / SNAP_MINUTES) * SNAP_MINUTES;
+    }
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return { hours, minutes, totalMinutes };
+}
+
+// Helper: Convert time to pixels
+function timeToPixels(hours, minutes) {
+    return ((hours * 60 + minutes) / 60) * PIXELS_PER_HOUR;
+}
+
+// Helper: Format time as HH:MM:SS
+function formatTimeSpan(hours, minutes) {
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
+}
+
+// ====================
+// DRAG & DROP: Moving entries
+// ====================
+
+document.querySelectorAll('.timegrid-entry').forEach(entry => {
+    // Drag start
+    entry.addEventListener('dragstart', (e) => {
+        if (e.target.classList.contains('entry-edit') || e.target.classList.contains('entry-delete')) {
+            e.preventDefault();
+            return;
+        }
+        
+        isDragging = true;
+        draggedEntry = entry;
+        dragStartY = e.clientY;
+        entryOriginalTop = parseFloat(entry.style.top);
+        
+        entry.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', entry.innerHTML);
+    });
+    
+    entry.addEventListener('dragend', (e) => {
+        isDragging = false;
+        entry.classList.remove('dragging');
+        draggedEntry = null;
+    });
+});
+
+// Allow drop on day cells
+document.querySelectorAll('.timegrid-day-cells').forEach(cells => {
+    cells.addEventListener('dragover', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    });
+    
+    cells.addEventListener('drop', async (e) => {
+        if (!isDragging || !draggedEntry) return;
+        e.preventDefault();
+        
+        const dayCol = cells.closest('.timegrid-day-col');
+        const rect = cells.getBoundingClientRect();
+        const offsetY = e.clientY - rect.top;
+        
+        // Calculate new time with snap
+        const time = pixelsToTime(offsetY, true);
+        const newStartMinutes = time.totalMinutes;
+        
+        // Calculate duration
+        const oldStart = draggedEntry.dataset.start;
+        const oldEnd = draggedEntry.dataset.end;
+        const [oldStartH, oldStartM] = oldStart.split(':').map(Number);
+        const [oldEndH, oldEndM] = oldEnd.split(':').map(Number);
+        const durationMinutes = (oldEndH * 60 + oldEndM) - (oldStartH * 60 + oldStartM);
+        
+        // Calculate new end time
+        const newEndMinutes = newStartMinutes + durationMinutes;
+        const newStartH = Math.floor(newStartMinutes / 60);
+        const newStartM = newStartMinutes % 60;
+        const newEndH = Math.floor(newEndMinutes / 60);
+        const newEndM = newEndMinutes % 60;
+        
+        // Validate time range
+        if (newStartH < 0 || newEndH >= 24) {
+            alert('Wpis wykracza poza zakres 00:00 - 24:00');
+            return;
+        }
+        
+        // Get new date
+        const newDate = dayCol.dataset.date;
+        const entryId = draggedEntry.dataset.entryId;
+        
+        // Update via API
+        const response = await fetch('@Url.Action("UpdateEntry", "Calendar")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                id: parseInt(entryId),
+                startTime: formatTimeSpan(newStartH, newStartM),
+                endTime: formatTimeSpan(newEndH, newEndM),
+                projectId: draggedEntry.dataset.projectId ? parseInt(draggedEntry.dataset.projectId) : null,
+                description: draggedEntry.querySelector('.entry-desc')?.textContent || ''
+            })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            location.reload();
+        } else {
+            alert(result.message || 'Błąd przesuwania wpisu');
+        }
+    });
+});
+
+// ====================
+// RESIZE: Changing entry duration
+// ====================
+
+document.querySelectorAll('.resize-handle').forEach(handle => {
+    handle.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        
+        isResizing = true;
+        draggedEntry = handle.closest('.timegrid-entry');
+        resizeDirection = handle.dataset.direction;
+        dragStartY = e.clientY;
+        entryOriginalTop = parseFloat(draggedEntry.style.top);
+        entryOriginalHeight = parseFloat(draggedEntry.style.height);
+        
+        draggedEntry.classList.add('resizing');
+        
+        document.addEventListener('mousemove', handleResize);
+        document.addEventListener('mouseup', handleResizeEnd);
+    });
+});
+
+function handleResize(e) {
+    if (!isResizing || !draggedEntry) return;
+    
+    const deltaY = e.clientY - dragStartY;
+    
+    if (resizeDirection === 'top') {
+        // Resize from top (change start time)
+        const newTop = entryOriginalTop + deltaY;
+        const time = pixelsToTime(newTop, true);
+        const snappedTop = timeToPixels(time.hours, time.minutes);
+        
+        const newHeight = entryOriginalHeight - (snappedTop - entryOriginalTop);
+        
+        if (snappedTop >= 0 && newHeight >= PIXELS_PER_HOUR / 4) { // Min 15 minutes
+            draggedEntry.style.top = snappedTop + 'px';
+            draggedEntry.style.height = newHeight + 'px';
+            
+            // Update time display
+            const endTime = pixelsToTime(snappedTop + newHeight, true);
+            draggedEntry.querySelector('.entry-time').textContent = 
+                `${time.hours.toString().padStart(2, '0')}:${time.minutes.toString().padStart(2, '0')} – ` +
+                `${endTime.hours.toString().padStart(2, '0')}:${endTime.minutes.toString().padStart(2, '0')}`;
+        }
+    } else if (resizeDirection === 'bottom') {
+        // Resize from bottom (change end time)
+        const newHeight = entryOriginalHeight + deltaY;
+        const time = pixelsToTime(newHeight, true);
+        const snappedHeight = timeToPixels(time.hours, time.minutes);
+        
+        if (snappedHeight >= PIXELS_PER_HOUR / 4 && (entryOriginalTop + snappedHeight) <= 24 * PIXELS_PER_HOUR) {
+            draggedEntry.style.height = snappedHeight + 'px';
+            
+            // Update time display
+            const startTime = pixelsToTime(entryOriginalTop, true);
+            const endTime = pixelsToTime(entryOriginalTop + snappedHeight, true);
+            draggedEntry.querySelector('.entry-time').textContent = 
+                `${startTime.hours.toString().padStart(2, '0')}:${startTime.minutes.toString().padStart(2, '0')} – ` +
+                `${endTime.hours.toString().padStart(2, '0')}:${endTime.minutes.toString().padStart(2, '0')}`;
+        }
+    }
+}
+
+async function handleResizeEnd(e) {
+    if (!isResizing || !draggedEntry) return;
+    
+    isResizing = false;
+    draggedEntry.classList.remove('resizing');
+    
+    document.removeEventListener('mousemove', handleResize);
+    document.removeEventListener('mouseup', handleResizeEnd);
+    
+    // Calculate new times
+    const top = parseFloat(draggedEntry.style.top);
+    const height = parseFloat(draggedEntry.style.height);
+    
+    const startTime = pixelsToTime(top, true);
+    const endTime = pixelsToTime(top + height, true);
+    
+    // Validate
+    if (startTime.totalMinutes >= endTime.totalMinutes) {
+        alert('Błędny zakres czasu');
+        location.reload();
+        return;
+    }
+    
+    // Update via API
+    const entryId = draggedEntry.dataset.entryId;
+    const response = await fetch('@Url.Action("UpdateEntry", "Calendar")', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            id: parseInt(entryId),
+            startTime: formatTimeSpan(startTime.hours, startTime.minutes),
+            endTime: formatTimeSpan(endTime.hours, endTime.minutes),
+            projectId: draggedEntry.dataset.projectId ? parseInt(draggedEntry.dataset.projectId) : null,
+            description: draggedEntry.querySelector('.entry-desc')?.textContent || ''
+        })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+        location.reload();
+    } else {
+        alert(result.message || 'Błąd zmiany rozmiaru wpisu');
+        location.reload();
+    }
+}
+
+// ====================
+// SELECTION: Creating new entries
+// ====================
+
 document.querySelectorAll('.timegrid-day-col').forEach(dayCol => {
     const cells = dayCol.querySelector('.timegrid-day-cells');
     
     cells.addEventListener('mousedown', (e) => {
-        if (e.target.classList.contains('timegrid-hour-cell')) {
+        // Ignore if clicking on entry or its buttons
+        if (e.target.closest('.timegrid-entry') || e.target.closest('.resize-handle')) {
+            return;
+        }
+        
+        if (e.target.classList.contains('timegrid-hour-cell') || e.target.classList.contains('timegrid-day-cells')) {
             isSelecting = true;
             currentDayCol = dayCol;
-            const hour = parseInt(e.target.dataset.hour);
+            
+            const rect = cells.getBoundingClientRect();
+            const offsetY = e.clientY - rect.top;
+            const hour = Math.floor(offsetY / PIXELS_PER_HOUR);
+            
             selectionStart = hour;
             selectionEnd = hour;
             updateSelection();
         }
     });
     
-    cells.addEventListener('mouseover', (e) => {
-        if (isSelecting && e.target.classList.contains('timegrid-hour-cell')) {
-            const hour = parseInt(e.target.dataset.hour);
-            selectionEnd = hour;
-            updateSelection();
-        }
+    cells.addEventListener('mousemove', (e) => {
+        if (!isSelecting) return;
+        
+        const rect = cells.getBoundingClientRect();
+        const offsetY = e.clientY - rect.top;
+        const hour = Math.floor(offsetY / PIXELS_PER_HOUR);
+        
+        selectionEnd = hour;
+        updateSelection();
     });
 });
 
@@ -422,7 +687,6 @@ function openModalForNewEntry() {
     
     updateDurationDisplay();
     
-    // Add event listeners for time inputs
     document.getElementById('entryStartTime').addEventListener('change', updateDurationDisplay);
     document.getElementById('entryEndTime').addEventListener('change', updateDurationDisplay);
     
@@ -450,7 +714,6 @@ function editEntry(entryId) {
     
     updateDurationDisplay();
     
-    // Add event listeners for time inputs
     document.getElementById('entryStartTime').addEventListener('change', updateDurationDisplay);
     document.getElementById('entryEndTime').addEventListener('change', updateDurationDisplay);
     
@@ -492,7 +755,6 @@ async function saveEntry() {
     const projectId = document.getElementById('projectSelect').value || null;
     const description = document.getElementById('descriptionInput').value;
     
-    // Walidacja czasu
     const [startH, startM] = document.getElementById('entryStartTime').value.split(':').map(Number);
     const [endH, endM] = document.getElementById('entryEndTime').value.split(':').map(Number);
     const startMinutes = startH * 60 + startM;
@@ -504,7 +766,6 @@ async function saveEntry() {
     }
     
     if (entryId) {
-        // Update existing
         const response = await fetch('@Url.Action("UpdateEntry", "Calendar")', {
             method: 'POST',
             headers: {
@@ -526,7 +787,6 @@ async function saveEntry() {
             alert(result.message || 'Błąd aktualizacji wpisu');
         }
     } else {
-        // Add new
         const response = await fetch('@Url.Action("AddEntry", "Calendar")', {
             method: 'POST',
             headers: {
