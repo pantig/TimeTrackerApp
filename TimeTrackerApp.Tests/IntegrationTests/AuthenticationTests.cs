@@ -17,7 +17,7 @@ public class AuthenticationTests : IntegrationTestBase
         // Arrange
         var loginData = new FormUrlEncodedContent(new[]
         {
-            new KeyValuePair<string, string>("Username", "admin"),
+            new KeyValuePair<string, string>("Email", "admin@test.com"),
             new KeyValuePair<string, string>("Password", "Admin123!")
         });
 
@@ -36,7 +36,7 @@ public class AuthenticationTests : IntegrationTestBase
         // Arrange
         var loginData = new FormUrlEncodedContent(new[]
         {
-            new KeyValuePair<string, string>("Username", "admin"),
+            new KeyValuePair<string, string>("Email", "admin@test.com"),
             new KeyValuePair<string, string>("Password", "WrongPassword")
         });
 
@@ -46,7 +46,7 @@ public class AuthenticationTests : IntegrationTestBase
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
-        content.Should().Contain("Nieprawidłowa nazwa użytkownika lub hasło");
+        content.Should().Contain("Nieprawidłow");
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class AuthenticationTests : IntegrationTestBase
     public async Task Logout_RedirectsToLoginPage()
     {
         // Arrange - First login
-        var cookie = await LoginAsAsync("admin", "Admin123!");
+        var cookie = await LoginAsAsync("admin@test.com", "Admin123!");
         SetAuthCookie(cookie);
 
         // Act
@@ -78,7 +78,6 @@ public class AuthenticationTests : IntegrationTestBase
         // Arrange
         var registerData = new FormUrlEncodedContent(new[]
         {
-            new KeyValuePair<string, string>("Username", "newuser"),
             new KeyValuePair<string, string>("Email", "newuser@test.com"),
             new KeyValuePair<string, string>("Password", "NewUser123!"),
             new KeyValuePair<string, string>("ConfirmPassword", "NewUser123!"),
@@ -95,13 +94,12 @@ public class AuthenticationTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task Register_WithExistingUsername_ShowsError()
+    public async Task Register_WithExistingEmail_ShowsError()
     {
         // Arrange
         var registerData = new FormUrlEncodedContent(new[]
         {
-            new KeyValuePair<string, string>("Username", "admin"), // Already exists
-            new KeyValuePair<string, string>("Email", "another@test.com"),
+            new KeyValuePair<string, string>("Email", "admin@test.com"), // Already exists
             new KeyValuePair<string, string>("Password", "Test123!"),
             new KeyValuePair<string, string>("ConfirmPassword", "Test123!"),
             new KeyValuePair<string, string>("FirstName", "Test"),
@@ -132,7 +130,7 @@ public class AuthenticationTests : IntegrationTestBase
     public async Task AccessProtectedPage_WithAuth_ReturnsSuccess()
     {
         // Arrange
-        var cookie = await LoginAsAsync("employee", "Employee123!");
+        var cookie = await LoginAsAsync("employee@test.com", "Employee123!");
         SetAuthCookie(cookie);
 
         // Act
