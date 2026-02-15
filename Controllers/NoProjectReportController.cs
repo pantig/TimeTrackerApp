@@ -150,11 +150,12 @@ namespace TimeTrackerApp.Controllers
 
             return Json(new { success = true });
         }
-    }
 
-    public class AssignProjectRequest
-    {
-        public int EntryId { get; set; }
-        public int ProjectId { get; set; }
+        // Klasa Request dla AssignProject
+        public class AssignProjectRequest
+        {
+            public int EntryId { get; set; }
+            public int ProjectId { get; set; }
+        }
     }
 }
