@@ -41,7 +41,8 @@ public class ProjectTests : IntegrationTestBase
             new KeyValuePair<string, string>("Name", "New Project"),
             new KeyValuePair<string, string>("Description", "Test description"),
             new KeyValuePair<string, string>("IsActive", "true"),
-            new KeyValuePair<string, string>("ManagerId", "2") // Manager seeded in IntegrationTestBase
+            new KeyValuePair<string, string>("ManagerId", "2"), // Manager seeded in IntegrationTestBase
+            new KeyValuePair<string, string>("ClientId", "1") // ✅ FIXED: Dodano wymagane ClientId
         });
 
         // Act
@@ -65,7 +66,8 @@ public class ProjectTests : IntegrationTestBase
             new KeyValuePair<string, string>("Name", "Updated Project Alpha"),
             new KeyValuePair<string, string>("Description", "Updated description"),
             new KeyValuePair<string, string>("IsActive", "true"),
-            new KeyValuePair<string, string>("ManagerId", "2")
+            new KeyValuePair<string, string>("ManagerId", "2"),
+            new KeyValuePair<string, string>("ClientId", "1") // ✅ FIXED: Dodano wymagane ClientId
         });
 
         // Act
